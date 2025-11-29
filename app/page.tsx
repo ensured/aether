@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Trash2 } from 'lucide-react';
 import '@xyflow/react/dist/style.css';
 
@@ -239,19 +238,25 @@ export default function Home() {
               clickedNode.data.path
             );
 
-            const newNodes = children.map((child: string, i: number) => ({
-              id: `${clickedNode.id}-${i}`,
-              position: {
-                x: clickedNode.position.x + (Math.random() - 0.5) * 400,
-                y: clickedNode.position.y + 180 + Math.random() * 80,
-              },
-              data: { 
-                label: child,
-                color: clickedNode.data.color,
-                path: [...clickedNode.data.path, child],
-                childrenLoaded: false
-              },
-            }));
+            const newNodes = children.map((child: string, i: number) => {
+              const angleStep = (2 * Math.PI) / children.length;
+              const angle = i * angleStep - Math.PI / 2;
+              const distance = 200;
+              
+              return {
+                id: `${clickedNode.id}-${i}`,
+                position: {
+                  x: clickedNode.position.x + distance * Math.cos(angle),
+                  y: clickedNode.position.y + distance * Math.sin(angle),
+                },
+                data: { 
+                  label: child,
+                  color: clickedNode.data.color,
+                  path: [...clickedNode.data.path, child],
+                  childrenLoaded: false
+                },
+              };
+            });
 
             const newEdges = children.map((_: string, i: number) => ({
               id: `e-${clickedNode.id}-${i}`,
