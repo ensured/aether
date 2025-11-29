@@ -97,7 +97,7 @@ export default function Home() {
     const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
     
     // Grid layout for root nodes
-    const nodesPerRow = 6; // 6 nodes per row
+    const nodesPerRow = 4; // 6 nodes per row
     const nodeWidth = 120;
     const nodeHeight = 60;
     const horizontalSpacing = 40;
