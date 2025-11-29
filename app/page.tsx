@@ -69,23 +69,9 @@ const COLORS = [
   "bg-teal-500",
 ];
 
-const initialNodes = ROOT_NODES.map((node, i) => ({
-  id: node.id,
-  position: { 
-    x: 400 + 320 * Math.cos((i * 2 * Math.PI) / ROOT_NODES.length - Math.PI / 2), 
-    y: 300 + 320 * Math.sin((i * 2 * Math.PI) / ROOT_NODES.length - Math.PI / 2) 
-  },
-  data: { 
-    label: node.name, 
-    color: node.color,
-    path: [node.name],
-    childrenLoaded: false
-  },
-}));
 
 export default function Home() {
   // Load custom nodes from localStorage on mount
-  const [customNodes, setCustomNodes] = useState<any[]>(() => loadCustomNodes());
   const [rootNodes, setRootNodes] = useState(() => [...ROOT_NODES, ...loadCustomNodes()]);
   
   // Initialize nodes with custom nodes from localStorage
@@ -603,6 +589,8 @@ return (
             ← Back
           </Button>
         )}
+        {/* {more than 1 node show} */}
+        { explorationHistory.currentIndex === 0  &&
         <Button
           size="sm"
           variant="destructive"
@@ -611,6 +599,7 @@ return (
         >
           Reset
         </Button>
+}
         {/* Show toggle button when at least one level deep or in show all mode */}
         {(selectedRootId || (explorationHistory.states.length > 0 && explorationHistory.currentIndex >= 0) || isShowingAll) && (
           <Button
