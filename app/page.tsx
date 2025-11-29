@@ -155,6 +155,38 @@ export default function Home() {
     saveCustomNodes(customOnly);
   }, [rootNodes]);
 
+  // Function to calculate grid layout for child nodes
+  const calculateChildNodePositions = useCallback((parentNode: any, childCount: number) => {
+    const positions = [];
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    
+    // Mobile-optimized spacing
+    const nodeWidth = isMobile ? 100 : 120;
+    const nodeHeight = isMobile ? 50 : 60;
+    const horizontalSpacing = isMobile ? 110 : 140;
+    const verticalSpacing = isMobile ? 70 : 80;
+    const startY = parentNode.position.y + (isMobile ? 150 : 180);
+    
+    // Mobile uses more vertical layout
+    const columns = isMobile ? Math.min(2, Math.ceil(Math.sqrt(childCount))) : Math.ceil(Math.sqrt(childCount));
+    
+    for (let i = 0; i < childCount; i++) {
+      const row = Math.floor(i / columns);
+      const col = i % columns;
+      
+      // Center the grid relative to parent
+      const totalWidth = columns * horizontalSpacing - (horizontalSpacing - nodeWidth);
+      const startX = parentNode.position.x - totalWidth / 2 + nodeWidth / 2;
+      
+      positions.push({
+        x: startX + col * horizontalSpacing,
+        y: startY + row * verticalSpacing
+      });
+    }
+    
+    return positions;
+  }, []);
+
   // Function to get node information
   const getNodeInfo = useCallback(async (node: any) => {
     setIsLoadingInfo(true);
@@ -239,12 +271,11 @@ export default function Home() {
               clickedNode.data.path
             );
 
+            const childPositions = calculateChildNodePositions(clickedNode, children.length);
+
             const newNodes = children.map((child: string, i: number) => ({
               id: `${clickedNode.id}-${i}`,
-              position: {
-                x: clickedNode.position.x + (Math.random() - 0.5) * 400,
-                y: clickedNode.position.y + 180 + Math.random() * 80,
-              },
+              position: childPositions[i],
               data: { 
                 label: child,
                 color: clickedNode.data.color,
@@ -302,12 +333,11 @@ export default function Home() {
           clickedNode.data.path
         );
 
+        const childPositions = calculateChildNodePositions(clickedNode, children.length);
+
         const newNodes = children.map((child: string, i: number) => ({
           id: `${clickedNode.id}-${i}`,
-          position: {
-            x: clickedNode.position.x + (Math.random() - 0.5) * 400,
-            y: clickedNode.position.y + 180 + Math.random() * 80,
-          },
+          position: childPositions[i],
           data: { 
             label: child,
             color: clickedNode.data.color,
@@ -500,54 +530,56 @@ export default function Home() {
 
   return (
     <div className="w-screen h-screen bg-background text-foreground relative">
-      <div className="absolute top-6 left-6 z-50">
-        <div className="flex items-center gap-4 mb-3">
-          <h1 className="text-4xl font-bold tracking-tight">Aether</h1>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={resetToRoot}
-            className="px-3 py-1 text-sm bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors"
-          >
-            Reset
-          </Button>
-          {/* Show toggle button when at least one level deep or in show all mode */}
-          {(selectedRootId || explorationHistory.length > 0 || isShowingAll) && (
+      <div className="absolute top-4 left-4 z-50 md:top-6 md:left-6">
+        <div className="flex flex-col gap-3 mb-3">
+          <div className="flex items-center gap-2 md:gap-4">
+            <h1 className="text-2xl md:text-4xl font-bold tracking-tight">Aether</h1>
             <Button
-            variant="outline"
-            size="sm"
-              onClick={toggleShowAll}
-              className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded-md transition-colors"
+              size="sm"
+              variant="destructive"
+              onClick={resetToRoot}
+              className="px-2 py-1 text-xs md:px-3 md:py-1 md:text-sm"
             >
-              {isShowingAll ? 'Hide All' : 'Show All'}
+              Reset
             </Button>
-          )}
+            {/* Show toggle button when at least one level deep or in show all mode */}
+            {(selectedRootId || explorationHistory.length > 0 || isShowingAll) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleShowAll}
+                className="px-2 py-1 text-xs md:px-3 md:py-1 md:text-sm"
+              >
+                {isShowingAll ? 'Hide All' : 'Show All'}
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
+            <Input
+              placeholder="Add new root node..."
+              value={newRootNodeName}
+              onChange={(e) => setNewRootNodeName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addNewRootNode();
+                }
+              }}
+              className="w-40 h-8 text-xs md:w-48 md:h-8 md:text-sm"
+            />
+            <Button 
+              size="sm"
+              onClick={addNewRootNode}
+              disabled={!newRootNodeName.trim()}
+              className="h-7 px-2 text-xs md:h-8 md:px-3 md:text-sm"
+            >
+              Add
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground md:text-sm">
+            Click any node to explore ∞
+          </p>
         </div>
-        <div className="flex items-center gap-2 mb-2">
-          <Input
-            placeholder="Add new root node..."
-            value={newRootNodeName}
-            onChange={(e) => setNewRootNodeName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addNewRootNode();
-              }
-            }}
-            className="w-48 h-8 text-sm"
-          />
-          <Button 
-            size="sm"
-            onClick={addNewRootNode}
-            disabled={!newRootNodeName.trim()}
-            className="h-8 px-3 text-sm"
-          >
-            Add
-          </Button>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Click any node to explore ∞
-        </p>
       </div>
 
       <ReactFlow
@@ -577,13 +609,13 @@ export default function Home() {
             ...node.data,
             label: (
               <div className="flex flex-col gap-2">
-                <div className={`px-4 py-2 rounded-md font-medium ${node.data.color} text-white`}>
+                <div className={`px-2 py-1 md:px-4 md:py-2 rounded-md font-medium text-xs md:text-sm ${node.data.color} text-white`}>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 md:gap-2">
                       {loadingNodeId === node.id && (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
                       )}
-                      <span>{node.data.label}</span>
+                      <span className="truncate max-w-20 md:max-w-none">{node.data.label}</span>
                     </div>
                     {/* Show trash icon only for custom root nodes */}
                     {rootNodes.some(rootNode => rootNode.id === node.id) && 
@@ -591,13 +623,13 @@ export default function Home() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0 hover:bg-white/20 text-white"
+                        className="h-5 w-5 md:h-6 md:w-6 p-0 hover:bg-white/20 text-white"
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           removeCustomRootNode(node.id);
                         }}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-2 h-2 md:w-3 md:h-3" />
                       </Button>
                     )}
                   </div>
@@ -608,7 +640,7 @@ export default function Home() {
                       <Button 
                         size="sm" 
                         variant="outline"
-                        className="h-6 px-2 text-xs"
+                        className="h-5 px-1 text-xs md:h-6 md:px-2 md:text-xs"
                         onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           handleNodeDialog(node);
@@ -617,7 +649,7 @@ export default function Home() {
                         Info
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-[425px] md:max-w-[500px]">
                       <DialogHeader>
                         <DialogTitle>{node.data.label}</DialogTitle>
                       </DialogHeader>
@@ -635,7 +667,7 @@ export default function Home() {
                         </div>
                         
                         <div className="space-y-2">
-                          <Label htmlFor="question">Ask a question:</Label>
+                          <Label htmlFor="question" className="text-sm">Ask a question:</Label>
                           <div className="flex gap-2">
                             <Input
                               id="question"
@@ -648,11 +680,13 @@ export default function Home() {
                                   askQuestion(node, question);
                                 }
                               }}
+                              className="text-sm"
                             />
                             <Button 
                               size="sm"
                               onClick={() => askQuestion(node, question)}
                               disabled={isLoadingQuestion || !question.trim()}
+                              className="shrink-0"
                             >
                               {isLoadingQuestion ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -682,13 +716,26 @@ export default function Home() {
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.3}
+        maxZoom={2}
+        attributionPosition="bottom-left"
+        nodesDraggable={true}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        selectNodesOnDrag={false}
+        panOnDrag={true}
+        panOnScroll={false}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={true}
+        preventScrolling={true}
       >
         <MiniMap 
           nodeColor="var(--muted-foreground)"
           zoomable 
           pannable
-          className="border rounded-md"
+          className="border rounded-md hidden md:block"
         />
         <Controls className="bg-background/80 backdrop-blur border" />
         <Background color="hsl(var(--muted))" gap={40} />
