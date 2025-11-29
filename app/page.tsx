@@ -48,6 +48,24 @@ const ROOT_NODES = [
   { id: "7", name: "Emotion", color: "bg-pink-500" },
   { id: "8", name: "Mathematics", color: "bg-cyan-500" },
   { id: "9", name: "Language", color: "bg-rose-500" },
+  { id: "10", name: "Evolution", color: "bg-green-600" },
+  { id: "11", name: "Technology", color: "bg-gray-600" },
+  { id: "12", name: "Art", color: "bg-pink-600" },
+  { id: "13", name: "Logic", color: "bg-blue-600" },
+  { id: "14", name: "Culture", color: "bg-red-500" },
+  { id: "15", name: "Gravity", color: "bg-purple-600" },
+  { id: "16", name: "Light", color: "bg-yellow-400" },
+  { id: "17", name: "Sound", color: "bg-indigo-500" },
+  { id: "18", name: "DNA", color: "bg-teal-500" },
+  { id: "19", name: "Ecosystems", color: "bg-lime-500" },
+  { id: "20", name: "Money", color: "bg-green-700" },
+  { id: "21", name: "Crypto", color: "bg-orange-600" },
+  { id: "22", name: "Decentralization", color: "bg-purple-700" },
+  { id: "23", name: "Information", color: "bg-sky-500" },
+  { id: "24", name: "Networks", color: "bg-emerald-600" },
+  { id: "25", name: "AI", color: "bg-violet-700" },
+  { id: "26", name: "Quantum", color: "bg-indigo-600" },
+  { id: "27", name: "Ethics", color: "bg-amber-700" },
 ];
 
 const COLORS = [
@@ -78,30 +96,47 @@ export default function Home() {
   const getInitialNodes = useCallback(() => {
     const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
     
-    // Original nodes
-    const originalNodes = ROOT_NODES.map((node, i) => ({
-      id: node.id,
-      position: { 
-        x: 400 + 320 * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2), 
-        y: 300 + 320 * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2) 
-      },
-      data: { 
-        label: node.name, 
-        color: node.color,
-        path: [node.name],
-        childrenLoaded: false
-      },
-    }));
+    // Grid layout for root nodes
+    const nodesPerRow = 6; // 6 nodes per row
+    const nodeWidth = 120;
+    const nodeHeight = 60;
+    const horizontalSpacing = 40;
+    const verticalSpacing = 40;
+    const startX = 100;
+    const startY = 100;
     
-    // Custom nodes
+    // Original nodes in grid layout
+    const originalNodes = ROOT_NODES.map((node, i) => {
+      const row = Math.floor(i / nodesPerRow);
+      const col = i % nodesPerRow;
+      
+      return {
+        id: node.id,
+        position: { 
+          x: startX + col * (nodeWidth + horizontalSpacing),
+          y: startY + row * (nodeHeight + verticalSpacing)
+        },
+        data: { 
+          label: node.name, 
+          color: node.color,
+          path: [node.name],
+          childrenLoaded: false
+        },
+      };
+    });
+    
+    // Custom nodes in grid layout (continue from where original nodes end)
     const customNodeInstances = loadCustomNodes().map((customNode: { id: string; name: string; color: string }, i: number) => {
-      const nodeIndex = ROOT_NODES.length + i;
+      const totalOriginalNodes = ROOT_NODES.length;
+      const globalIndex = totalOriginalNodes + i;
+      const row = Math.floor(globalIndex / nodesPerRow);
+      const col = globalIndex % nodesPerRow;
       
       return {
         id: customNode.id,
         position: {
-          x: 400 + 320 * Math.cos((nodeIndex * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
-          y: 300 + 320 * Math.sin((nodeIndex * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
+          x: startX + col * (nodeWidth + horizontalSpacing),
+          y: startY + row * (nodeHeight + verticalSpacing)
         },
         data: {
           label: customNode.name,
@@ -389,55 +424,68 @@ const resetToRoot = useCallback(() => {
       states: [],
       currentIndex: -1
     });
-  setIsShowingAll(false);
+    setIsShowingAll(false);
   
-  // Reset to all root nodes (original + custom) with their initial positions
+  // Reset to all root nodes (original + custom) with grid layout
   const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
   setRootNodes(allRootNodes);
   
-  // Recreate all nodes with proper positions
-  const resetNodes = allRootNodes.map((rootNode, i) => ({
-    id: rootNode.id,
-    position: {
-      x: 400 + 320 * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
-      y: 300 + 320 * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
-    },
-    data: {
-      label: rootNode.name,
-      color: rootNode.color,
-      path: [rootNode.name],
-      childrenLoaded: false
-    }
-  }));
+  // Grid layout parameters
+  const nodesPerRow = 6;
+  const nodeWidth = 120;
+  const nodeHeight = 60;
+  const horizontalSpacing = 40;
+  const verticalSpacing = 40;
+  const startX = 100;
+  const startY = 100;
+  
+  // Recreate all nodes with grid positions
+  const resetNodes = allRootNodes.map((rootNode, i) => {
+    const row = Math.floor(i / nodesPerRow);
+    const col = i % nodesPerRow;
+    
+    return {
+      id: rootNode.id,
+      position: {
+        x: startX + col * (nodeWidth + horizontalSpacing),
+        y: startY + row * (nodeHeight + verticalSpacing)
+      },
+      data: {
+        label: rootNode.name,
+        color: rootNode.color,
+        path: [rootNode.name],
+        childrenLoaded: false
+      }
+    };
+  });
   
   setNodes(resetNodes);
   setEdges([]);
 }, []);
 
-  // Function to navigate back in exploration history
-  const navigateBack = useCallback(() => {
-    setExplorationHistory(prev => {
-      if (prev.currentIndex > 0) {
-        // Go to the previous state
-        const previousState = prev.states[prev.currentIndex - 1];
-        setSelectedRootId(previousState.selectedRootId);
-        setIsShowingAll(previousState.isShowingAll);
-        return {
-          ...prev,
-          currentIndex: prev.currentIndex - 1
-        };
-      } else if (prev.currentIndex === 0) {
-        // If we're at the first state, trigger full reset to clear all expanded nodes
-        resetToRoot();
-        return {
-          ...prev,
-          currentIndex: -1
-        };
-      }
-      return prev;
-    });
-  }, [resetToRoot]);
-
+// Function to navigate back in exploration history
+const navigateBack = useCallback(() => {
+  setExplorationHistory(prev => {
+    if (prev.currentIndex > 0) {
+      // Go to the previous state
+      const previousState = prev.states[prev.currentIndex - 1];
+      setSelectedRootId(previousState.selectedRootId);
+      setIsShowingAll(previousState.isShowingAll);
+      return {
+        ...prev,
+        currentIndex: prev.currentIndex - 1
+      };
+    } else if (prev.currentIndex === 0) {
+      // If we're at the first state, trigger full reset to clear all expanded nodes
+      resetToRoot();
+      return {
+        ...prev,
+        currentIndex: -1
+      };
+    }
+    return prev;
+  });
+}, [resetToRoot]);
 
 const toggleShowAll = useCallback(() => {
   if (isShowingAll) {
@@ -456,19 +504,26 @@ const toggleShowAll = useCallback(() => {
 }, [isShowingAll, explorationHistory]);
 
 const recalculateNodePositions = useCallback((allRootNodes: any[], currentNodes: CustomNode[]) => {
-  const radius = 320;
-  const centerX = 400;
-  const centerY = 300;
+  // Grid layout parameters
+  const nodesPerRow = 6;
+  const nodeWidth = 120;
+  const nodeHeight = 60;
+  const horizontalSpacing = 40;
+  const verticalSpacing = 40;
+  const startX = 100;
+  const startY = 100;
   
   return allRootNodes.map((rootNode, i) => {
     // Find the existing node to preserve its data
     const existingNode = currentNodes.find(node => node.id === rootNode.id);
+    const row = Math.floor(i / nodesPerRow);
+    const col = i % nodesPerRow;
     
     return {
       id: rootNode.id,
       position: {
-        x: centerX + radius * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
-        y: centerY + radius * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
+        x: startX + col * (nodeWidth + horizontalSpacing),
+        y: startY + row * (nodeHeight + verticalSpacing)
       },
       data: {
         label: rootNode.name,
@@ -590,7 +645,7 @@ return (
           </Button>
         )}
         {/* {more than 1 node show} */}
-        { explorationHistory.currentIndex === 0  &&
+        { explorationHistory.currentIndex > 0  &&
         <Button
           size="sm"
           variant="destructive"
