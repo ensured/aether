@@ -137,8 +137,18 @@ export default function Home() {
   const [newRootNodeName, setNewRootNodeName] = useState('');
   const [isShowingAll, setIsShowingAll] = useState(false);
 
-  // Add this state to track the exploration history
-  const [explorationHistory, setExplorationHistory] = useState<string[]>([]);
+  // Add this state to track the exploration history with full state data
+  const [explorationHistory, setExplorationHistory] = useState<{
+    states: Array<{
+      nodeId: string;
+      selectedRootId: string | null;
+      isShowingAll: boolean;
+    }>;
+    currentIndex: number;
+  }>({
+    states: [],
+    currentIndex: -1
+  });
   const [selectedNodeForDialog, setSelectedNodeForDialog] = useState<any>(null);
   const [nodeInfo, setNodeInfo] = useState<string>('');
   const [question, setQuestion] = useState<string>('');
@@ -222,9 +232,19 @@ export default function Home() {
       
       // Update exploration history
       if (!wasSelected) {
-        setExplorationHistory([clickedNode.id]);
+        setExplorationHistory({
+          states: [{
+            nodeId: clickedNode.id,
+            selectedRootId: clickedNode.id,
+            isShowingAll: false
+          }],
+          currentIndex: 0
+        });
       } else {
-        setExplorationHistory([]);
+        setExplorationHistory({
+          states: [],
+          currentIndex: -1
+        });
       }
       
       // If this is a new selection and children aren't loaded, load them
@@ -272,6 +292,9 @@ export default function Home() {
               target: `${clickedNode.id}-${i}`,
               animated: true,
               style: { stroke: clickedNode.data.color, strokeWidth: 2 },
+              // Add handle positioning for better grid connection
+              sourceHandle: 'bottom',
+              targetHandle: 'top',
             }));
 
             setNodes((nds: Node[]) => [
@@ -297,13 +320,19 @@ export default function Home() {
 
     // Update exploration history for non-root nodes
     setExplorationHistory(prev => {
-      const newHistory = [...prev];
-      // Add current node to history
-      if (!newHistory.includes(clickedNode.id)) {
-        newHistory.push(clickedNode.id);
+      const newStates = [...prev.states];
+      // Add current node as a new state if it's not already the current state
+      if (newStates.length === 0 || newStates[newStates.length - 1].nodeId !== clickedNode.id) {
+        newStates.push({
+          nodeId: clickedNode.id,
+          selectedRootId: clickedNode.id,
+          isShowingAll: false
+        });
       }
-      // Keep only the last 3 nodes (parent, current, and one previous)
-      return newHistory.slice(-3);
+      return {
+        states: newStates,
+        currentIndex: newStates.length - 1
+      };
     });
 
   startTransition(async () => {
@@ -368,42 +397,69 @@ export default function Home() {
   });
 }, [loadingNodeId, setNodes, setEdges, startTransition]);
 
-  const resetToRoot = useCallback(() => {
+const resetToRoot = useCallback(() => {
     setSelectedRootId(null);
-    setExplorationHistory([]);
-    setIsShowingAll(false);
-    
-    // Reset to all root nodes (original + custom) with their initial positions
-    const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
-    setRootNodes(allRootNodes);
-    
-    // Recreate all nodes with proper positions
-    const resetNodes = allRootNodes.map((rootNode, i) => ({
-      id: rootNode.id,
-      position: {
-        x: 400 + 320 * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
-        y: 300 + 320 * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
-      },
-      data: {
-        label: rootNode.name,
-        color: rootNode.color,
-        path: [rootNode.name],
-        childrenLoaded: false
-      }
-    }));
-    
-    setNodes(resetNodes);
-    setEdges([]);
-  }, []);
+    setExplorationHistory({
+      states: [],
+      currentIndex: -1
+    });
+  setIsShowingAll(false);
+  
+  // Reset to all root nodes (original + custom) with their initial positions
+  const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
+  setRootNodes(allRootNodes);
+  
+  // Recreate all nodes with proper positions
+  const resetNodes = allRootNodes.map((rootNode, i) => ({
+    id: rootNode.id,
+    position: {
+      x: 400 + 320 * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
+      y: 300 + 320 * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
+    },
+    data: {
+      label: rootNode.name,
+      color: rootNode.color,
+      path: [rootNode.name],
+      childrenLoaded: false
+    }
+  }));
+  
+  setNodes(resetNodes);
+  setEdges([]);
+}, []);
 
-  const toggleShowAll = useCallback(() => {
+  // Function to navigate back in exploration history
+  const navigateBack = useCallback(() => {
+    setExplorationHistory(prev => {
+      if (prev.currentIndex > 0) {
+        // Go to the previous state
+        const previousState = prev.states[prev.currentIndex - 1];
+        setSelectedRootId(previousState.selectedRootId);
+        setIsShowingAll(previousState.isShowingAll);
+        return {
+          ...prev,
+          currentIndex: prev.currentIndex - 1
+        };
+      } else if (prev.currentIndex === 0) {
+        // If we're at the first state, trigger full reset to clear all expanded nodes
+        resetToRoot();
+        return {
+          ...prev,
+          currentIndex: -1
+        };
+      }
+      return prev;
+    });
+  }, [resetToRoot]);
+
+
+const toggleShowAll = useCallback(() => {
   if (isShowingAll) {
     // Currently showing all → Hide all (return to focused view)
     setIsShowingAll(false);
-    if (explorationHistory.length > 0) {
-      const currentRootId = explorationHistory[0];
-      setSelectedRootId(currentRootId);
-      setExplorationHistory([currentRootId]);
+    if (explorationHistory.states.length > 0 && explorationHistory.currentIndex >= 0) {
+      const currentState = explorationHistory.states[explorationHistory.currentIndex];
+      setSelectedRootId(currentState.selectedRootId);
     }
   } else {
     // Currently focused → Show all
@@ -413,171 +469,186 @@ export default function Home() {
   }
 }, [isShowingAll, explorationHistory]);
 
-  const recalculateNodePositions = useCallback((allRootNodes: any[], currentNodes: CustomNode[]) => {
-    const radius = 320;
-    const centerX = 400;
-    const centerY = 300;
+const recalculateNodePositions = useCallback((allRootNodes: any[], currentNodes: CustomNode[]) => {
+  const radius = 320;
+  const centerX = 400;
+  const centerY = 300;
+  
+  return allRootNodes.map((rootNode, i) => {
+    // Find the existing node to preserve its data
+    const existingNode = currentNodes.find(node => node.id === rootNode.id);
     
-    return allRootNodes.map((rootNode, i) => {
-      // Find the existing node to preserve its data
-      const existingNode = currentNodes.find(node => node.id === rootNode.id);
-      
-      return {
-        id: rootNode.id,
-        position: {
-          x: centerX + radius * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
-          y: centerY + radius * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
-        },
-        data: {
-          label: rootNode.name,
-          color: rootNode.color,
-          path: [rootNode.name],
-          childrenLoaded: existingNode?.data?.childrenLoaded || false
+    return {
+      id: rootNode.id,
+      position: {
+        x: centerX + radius * Math.cos((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2),
+        y: centerY + radius * Math.sin((i * 2 * Math.PI) / allRootNodes.length - Math.PI / 2)
+      },
+      data: {
+        label: rootNode.name,
+        color: rootNode.color,
+        path: [rootNode.name],
+        childrenLoaded: existingNode?.data?.childrenLoaded || false
+      }
+    };
+  });
+}, []);
+
+const removeCustomRootNode = useCallback((nodeId: string) => {
+  // Only allow removing custom nodes (not original ROOT_NODES)
+  if (ROOT_NODES.some(node => node.id === nodeId)) return;
+  
+  // Remove from rootNodes state
+  setRootNodes(prev => prev.filter(node => node.id !== nodeId));
+  
+  // Remove from nodes state and all its children
+  setNodes(prev => {
+    const nodesToRemove = new Set([nodeId]);
+    
+    // Find all children and grandchildren recursively
+    const findDescendants = (parentId: string) => {
+      prev.forEach(node => {
+        const edge = edges.find(e => e.source === parentId && e.target === node.id);
+        if (edge) {
+          nodesToRemove.add(node.id);
+          findDescendants(node.id);
         }
-      };
-    });
-  }, []);
-
-  const removeCustomRootNode = useCallback((nodeId: string) => {
-    // Only allow removing custom nodes (not original ROOT_NODES)
-    if (ROOT_NODES.some(node => node.id === nodeId)) return;
-    
-    // Remove from rootNodes state
-    setRootNodes(prev => prev.filter(node => node.id !== nodeId));
-    
-    // Remove from nodes state and all its children
-    setNodes(prev => {
-      const nodesToRemove = new Set([nodeId]);
-      
-      // Find all children and grandchildren recursively
-      const findDescendants = (parentId: string) => {
-        prev.forEach(node => {
-          const edge = edges.find(e => e.source === parentId && e.target === node.id);
-          if (edge) {
-            nodesToRemove.add(node.id);
-            findDescendants(node.id);
-          }
-        });
-      };
-      
-      findDescendants(nodeId);
-      
-      return prev.filter(node => !nodesToRemove.has(node.id));
-    });
-    
-    // Remove related edges
-    setEdges(prev => {
-      const edgesToRemove = new Set();
-      
-      // Find all edges connected to this node and its descendants
-      const findRelatedEdges = (nodeId: string) => {
-        prev.forEach(edge => {
-          if (edge.source === nodeId || edge.target === nodeId) {
-            edgesToRemove.add(edge.id);
-            if (edge.target !== nodeId) {
-              findRelatedEdges(edge.target);
-            }
-          }
-        });
-      };
-      
-      findRelatedEdges(nodeId);
-      
-      return prev.filter(edge => !edgesToRemove.has(edge.id));
-    });
-    
-    // Clear selection if this node was selected
-    if (selectedRootId === nodeId) {
-      setSelectedRootId(null);
-      setExplorationHistory([]);
-    }
-    
-    // Remove from exploration history
-    setExplorationHistory(prev => prev.filter(id => id !== nodeId));
-  }, [edges, selectedRootId]);
-
-  const addNewRootNode = useCallback(() => {
-    if (!newRootNodeName.trim()) return;
-    
-    const newNodeId = `custom-${Date.now()}`;
-    const colorIndex = rootNodes.length % COLORS.length;
-    const color = COLORS[colorIndex];
-    
-    const newRootNode = {
-      id: newNodeId,
-      name: newRootNodeName.trim(),
-      color
+      });
     };
     
-    // Add the new root node
-    const updatedRootNodes = [...rootNodes, newRootNode];
-    setRootNodes(updatedRootNodes);
+    findDescendants(nodeId);
     
-    // Recalculate positions for all nodes, preserving existing data
-    const updatedNodes = recalculateNodePositions(updatedRootNodes, nodes);
+    return prev.filter(node => !nodesToRemove.has(node.id));
+  });
+  
+  // Remove related edges
+  setEdges(prev => {
+    const edgesToRemove = new Set();
     
-    // Preserve existing non-root nodes and their positions
-    const existingNonRootNodes = nodes.filter(node => 
-      !rootNodes.some(rootNode => rootNode.id === node.id)
-    );
+    // Find all edges connected to this node and its descendants
+    const findRelatedEdges = (nodeId: string) => {
+      prev.forEach(edge => {
+        if (edge.source === nodeId || edge.target === nodeId) {
+          edgesToRemove.add(edge.id);
+          if (edge.target !== nodeId) {
+            findRelatedEdges(edge.target);
+          }
+        }
+      });
+    };
     
-    setNodes([...updatedNodes, ...existingNonRootNodes]);
-    setNewRootNodeName('');
-  }, [newRootNodeName, rootNodes, nodes, recalculateNodePositions]);
+    findRelatedEdges(nodeId);
+    
+    return prev.filter(edge => !edgesToRemove.has(edge.id));
+  });
+  
+  // Clear selection if this node was selected
+  if (selectedRootId === nodeId) {
+    setSelectedRootId(null);
+    setExplorationHistory({
+      states: [],
+      currentIndex: -1
+    });
+  }
+  
+  // Remove from exploration history
+  setExplorationHistory(prev => ({
+    states: prev.states.filter(state => state.nodeId !== nodeId),
+    currentIndex: prev.currentIndex
+  }));
+}, [edges, selectedRootId]);
 
-  return (
-    <div className="w-screen h-screen bg-background text-foreground relative">
-      <div className="absolute top-6 left-6 z-50">
-        <div className="flex items-center gap-4 mb-3">
-          <h1 className="text-4xl font-bold tracking-tight">Aether</h1>
+const addNewRootNode = useCallback(() => {
+  if (!newRootNodeName.trim()) return;
+  
+  const newNodeId = `custom-${Date.now()}`;
+  const colorIndex = rootNodes.length % COLORS.length;
+  const color = COLORS[colorIndex];
+  
+  const newRootNode = {
+    id: newNodeId,
+    name: newRootNodeName.trim(),
+    color
+  };
+  
+  // Add the new root node
+  const updatedRootNodes = [...rootNodes, newRootNode];
+  setRootNodes(updatedRootNodes);
+  
+  // Recalculate positions for all nodes, preserving existing data
+  const updatedNodes = recalculateNodePositions(updatedRootNodes, nodes);
+  
+  // Preserve existing non-root nodes and their positions
+  const existingNonRootNodes = nodes.filter(node => 
+    !rootNodes.some(rootNode => rootNode.id === node.id)
+  );
+  
+  setNodes([...updatedNodes, ...existingNonRootNodes]);
+  setNewRootNodeName('');
+}, [newRootNodeName, rootNodes, nodes, recalculateNodePositions]);
+
+return (
+  <div className="w-screen h-screen bg-background text-foreground relative">
+    <div className="absolute top-6 left-6 z-50">
+      <div className="flex items-center gap-4 mb-3">
+        <h1 className="text-4xl font-bold tracking-tight">Aether</h1>
+        {/* Show back button when there's exploration history */}
+        {explorationHistory.states.length > 0 && explorationHistory.currentIndex >= 0 && (
           <Button
             size="sm"
-            variant="destructive"
-            onClick={resetToRoot}
-            className="px-3 py-1 text-sm bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors"
+            variant="outline"
+            onClick={navigateBack}
+            className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded-md transition-colors"
           >
-            Reset
+            ← Back
           </Button>
-          {/* Show toggle button when at least one level deep or in show all mode */}
-          {(selectedRootId || explorationHistory.length > 0 || isShowingAll) && (
-            <Button
+        )}
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={resetToRoot}
+          className="px-3 py-1 text-sm bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-md transition-colors"
+        >
+          Reset
+        </Button>
+        {/* Show toggle button when at least one level deep or in show all mode */}
+        {(selectedRootId || (explorationHistory.states.length > 0 && explorationHistory.currentIndex >= 0) || isShowingAll) && (
+          <Button
             variant="outline"
             size="sm"
-              onClick={toggleShowAll}
-              className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded-md transition-colors"
-            >
-              {isShowingAll ? 'Hide All' : 'Show All'}
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mb-2">
-          <Input
-            placeholder="Add new root node..."
-            value={newRootNodeName}
-            onChange={(e) => setNewRootNodeName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addNewRootNode();
-              }
-            }}
-            className="w-48 h-8 text-sm"
-          />
-          <Button 
-            size="sm"
-            onClick={addNewRootNode}
-            disabled={!newRootNodeName.trim()}
-            className="h-8 px-3 text-sm"
+            onClick={toggleShowAll}
+            className="px-3 py-1 text-sm bg-white/10 hover:bg-white/20 rounded-md transition-colors"
           >
-            Add
+            {isShowingAll ? 'Hide All' : 'Show All'}
           </Button>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Click any node to explore ∞
-        </p>
+        )}
       </div>
+      <div className="flex items-center gap-2 mb-2">
+        <Input
+          placeholder="Add new root node..."
+          value={newRootNodeName}
+          onChange={(e) => setNewRootNodeName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addNewRootNode();
+            }
+          }}
+        />
+        <Button
+          size="sm"
+          onClick={addNewRootNode}
+          className="px-3 py-1 text-sm bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-md transition-colors"
+        >
+          Add
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Click any node to explore ∞
+      </p>
+    </div>
 
-      <ReactFlow
+    <ReactFlow
         nodes={nodes.filter(node => {
           // If no root is selected, show all nodes
           if (!selectedRootId) return true;
@@ -586,14 +657,16 @@ export default function Home() {
           if (node.id === selectedRootId) return true;
           
           // Always show nodes in exploration history (recent nodes)
-          if (explorationHistory.includes(node.id)) return true;
+          if (explorationHistory.states.some(state => state.nodeId === node.id)) return true;
           
           // Show children of the most recent node in history
-          const mostRecentNode = explorationHistory[explorationHistory.length - 1];
-          if (mostRecentNode) {
-            // Check if this node is a child of the most recent node
-            const isChild = edges.some(edge => edge.source === mostRecentNode && edge.target === node.id);
-            if (isChild) return true;
+          if (explorationHistory.currentIndex >= 0) {
+            const mostRecentState = explorationHistory.states[explorationHistory.currentIndex];
+            if (mostRecentState) {
+              // Check if this node is a child of the most recent node
+              const isChild = edges.some(edge => edge.source === mostRecentState.nodeId && edge.target === node.id);
+              if (isChild) return true;
+            }
           }
           
           // Hide all other nodes (including other root nodes)
