@@ -239,15 +239,23 @@ export default function Home() {
             );
 
             const newNodes = children.map((child: string, i: number) => {
-              const angleStep = (2 * Math.PI) / children.length;
-              const angle = i * angleStep - Math.PI / 2;
-              const distance = 200;
+              const nodesPerRow = 4;
+              const nodeWidth = 120; // Increased to match actual node width
+              const nodeHeight = 60;  // Approximate node height
+              const spacing = 20;     // Proper spacing between nodes
+              const row = Math.floor(i / nodesPerRow);
+              const col = i % nodesPerRow;
+              
+              // Calculate starting position to center the grid
+              const gridWidth = nodesPerRow * (nodeWidth + spacing) - spacing;
+              const startX = clickedNode.position.x - gridWidth / 2;
+              const startY = clickedNode.position.y + 150;
               
               return {
                 id: `${clickedNode.id}-${i}`,
                 position: {
-                  x: clickedNode.position.x + distance * Math.cos(angle),
-                  y: clickedNode.position.y + distance * Math.sin(angle),
+                  x: startX + col * (nodeWidth + spacing),
+                  y: startY + row * (nodeHeight + spacing),
                 },
                 data: { 
                   label: child,
@@ -298,20 +306,33 @@ export default function Home() {
       return newHistory.slice(-3);
     });
 
-    startTransition(async () => {
-      try {
-        setLoadingNodeId(clickedNode.id);
-        
-        const children = await getChildConcepts(
-          clickedNode.data.label,
-          clickedNode.data.path
-        );
+  startTransition(async () => {
+    try {
+      setLoadingNodeId(clickedNode.id);
+      
+      const children = await getChildConcepts(
+        clickedNode.data.label,
+        clickedNode.data.path
+      );
 
-        const newNodes = children.map((child: string, i: number) => ({
+      const newNodes = children.map((child: string, i: number) => {
+        const nodesPerRow = 4;
+        const nodeWidth = 120; // Increased to match actual node width
+        const nodeHeight = 60;  // Approximate node height
+        const spacing = 20;     // Proper spacing between nodes
+        const row = Math.floor(i / nodesPerRow);
+        const col = i % nodesPerRow;
+        
+        // Calculate starting position to center the grid
+        const gridWidth = nodesPerRow * (nodeWidth + spacing) - spacing;
+        const startX = clickedNode.position.x - gridWidth / 2;
+        const startY = clickedNode.position.y + 150;
+        
+        return {
           id: `${clickedNode.id}-${i}`,
           position: {
-            x: clickedNode.position.x + (Math.random() - 0.5) * 400,
-            y: clickedNode.position.y + 180 + Math.random() * 80,
+            x: startX + col * (nodeWidth + spacing),
+            y: startY + row * (nodeHeight + spacing),
           },
           data: { 
             label: child,
@@ -319,32 +340,33 @@ export default function Home() {
             path: [...clickedNode.data.path, child],
             childrenLoaded: false
           },
-        }));
+        };
+      });
 
-        const newEdges = children.map((_: string, i: number) => ({
-          id: `e-${clickedNode.id}-${i}`,
-          source: clickedNode.id,
-          target: `${clickedNode.id}-${i}`,
-          animated: true,
-          style: { stroke: clickedNode.data.color, strokeWidth: 2 },
-        }));
+      const newEdges = children.map((_: string, i: number) => ({
+        id: `e-${clickedNode.id}-${i}`,
+        source: clickedNode.id,
+        target: `${clickedNode.id}-${i}`,
+        animated: true,
+        style: { stroke: clickedNode.data.color, strokeWidth: 2 },
+      }));
 
-        setNodes((nds: Node[]) => [
-          ...nds.map(n => 
-            n.id === clickedNode.id 
-              ? { ...n, data: { ...n.data, childrenLoaded: true } }
-              : n
-          ),
-          ...newNodes
-        ]);
-        setEdges((eds: Edge[]) => [...eds, ...newEdges]);
-      } catch (error) {
-        console.error("Error in onNodeClick:", error);
-      } finally {
-        setLoadingNodeId(null);
-      }
-    });
-  }, [loadingNodeId, setNodes, setEdges, startTransition]);
+      setNodes((nds: Node[]) => [
+        ...nds.map(n => 
+          n.id === clickedNode.id 
+            ? { ...n, data: { ...n.data, childrenLoaded: true } }
+            : n
+        ),
+        ...newNodes
+      ]);
+      setEdges((eds: Edge[]) => [...eds, ...newEdges]);
+    } catch (error) {
+      console.error("Error in onNodeClick:", error);
+    } finally {
+      setLoadingNodeId(null);
+    }
+  });
+}, [loadingNodeId, setNodes, setEdges, startTransition]);
 
   const resetToRoot = useCallback(() => {
     setSelectedRootId(null);
