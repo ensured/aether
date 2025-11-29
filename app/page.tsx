@@ -3,7 +3,7 @@
 
 import { ReactFlow, MiniMap, Controls, Background, useNodesState, useEdgesState } from '@xyflow/react';
 
-import { useCallback, useState, useTransition, useEffect } from 'react';
+import { useCallback, useState, useTransition, useEffect, useRef } from 'react';
 import { getChildConcepts } from '@/actions/groqActions'; 
 import { Loader2 } from 'lucide-react';
 import { Node, Edge } from '@xyflow/react';
@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Undo, Redo, X } from 'lucide-react';
+import { historyCache, generateSessionId } from '@/lib/historyCache';
 import '@xyflow/react/dist/style.css';
 
 // Define custom node type with JSX label
@@ -146,14 +147,145 @@ export default function Home() {
   const [questionAnswer, setQuestionAnswer] = useState<string>('');
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
+  
+  // Undo/redo state
+  const [history, setHistory] = useState<{ nodes: CustomNode[], edges: Edge[] }[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const lastActionRef = useRef<string>('');
+  const [sessionId] = useState(() => {
+    // Try to get existing session from localStorage, or create new one
+    if (typeof window !== 'undefined') {
+      const existingSession = localStorage.getItem('aether-session-id');
+      if (existingSession && historyCache.has(existingSession)) {
+        return existingSession;
+      }
+      const newSession = generateSessionId();
+      localStorage.setItem('aether-session-id', newSession);
+      return newSession;
+    }
+    return generateSessionId();
+  });
 
-  // Save custom nodes to localStorage whenever they change
+  // Initialize history with initial state or cached state
+  useEffect(() => {
+    // Try to load from cache first
+    const cachedHistory = historyCache.get(sessionId);
+    if (cachedHistory) {
+      setHistory([{ nodes: cachedHistory.nodes, edges: cachedHistory.edges }]);
+      setHistoryIndex(0);
+      setNodes(cachedHistory.nodes);
+      setEdges(cachedHistory.edges);
+    } else {
+      // Initialize with fresh state
+      const initialNodes = getInitialNodes();
+      setHistory([{ nodes: initialNodes, edges: [] }]);
+      setHistoryIndex(0);
+      // Cache the initial state
+      historyCache.set(sessionId, initialNodes, []);
+    }
+  }, [sessionId, getInitialNodes, setNodes, setEdges]);
   useEffect(() => {
     const customOnly = rootNodes.filter(node => 
       !ROOT_NODES.some(originalNode => originalNode.id === node.id)
     );
     saveCustomNodes(customOnly);
   }, [rootNodes]);
+
+  // Save current state to history whenever nodes or edges change
+  const saveToHistory = useCallback((nodes: CustomNode[], edges: Edge[], action: string) => {
+    // Don't save if it's the same action as last time (to avoid duplicates)
+    if (lastActionRef.current === action) return;
+    
+    const newState = { 
+      nodes: JSON.parse(JSON.stringify(nodes)), 
+      edges: JSON.parse(JSON.stringify(edges)) 
+    };
+    
+    setHistory(prev => {
+      // Remove any states after current index (for redo functionality)
+      const newHistory = prev.slice(0, historyIndex + 1);
+      // Add new state
+      newHistory.push(newState);
+      // Keep only last 50 states to prevent memory issues
+      if (newHistory.length > 50) {
+        newHistory.shift();
+        return newHistory;
+      }
+      return newHistory;
+    });
+    
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+    lastActionRef.current = action;
+    
+    // Save to cache with 1-hour TTL
+    historyCache.set(sessionId, nodes, edges);
+  }, [historyIndex, sessionId]);
+
+  // Undo function
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setNodes(prevState.nodes);
+      setEdges(prevState.edges);
+      setHistoryIndex(prev => prev - 1);
+      lastActionRef.current = 'undo';
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Redo function
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+      setHistoryIndex(prev => prev + 1);
+      lastActionRef.current = 'redo';
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Delete last node grid and connection
+  const deleteLastGrid = useCallback(() => {
+    if (explorationHistory.length === 0) return;
+    
+    const lastNodeId = explorationHistory[explorationHistory.length - 1];
+    
+    // Find all child nodes of the last node
+    const childNodeIds = edges
+      .filter(edge => edge.source === lastNodeId)
+      .map(edge => edge.target);
+    
+    if (childNodeIds.length === 0) return;
+    
+    // Remove child nodes and their edges
+    setNodes(prev => prev.filter(node => !childNodeIds.includes(node.id)));
+    setEdges(prev => {
+      const edgeIdsToRemove = new Set(
+        edges
+          .filter(edge => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target))
+          .map(edge => edge.id)
+      );
+      return prev.filter(edge => !edgeIdsToRemove.has(edge.id));
+    });
+    
+    // Remove from exploration history
+    setExplorationHistory(prev => prev.slice(0, -1));
+    
+    // Mark the parent node as not having children loaded
+    setNodes(prev => prev.map(node => 
+      node.id === lastNodeId 
+        ? { ...node, data: { ...node.data, childrenLoaded: false } }
+        : node
+    ));
+    
+    saveToHistory(nodes.filter(node => !childNodeIds.includes(node.id)), edges.filter(edge => {
+      const edgeIdsToRemove = new Set(
+        edges
+          .filter(edge => childNodeIds.includes(edge.source) || childNodeIds.includes(edge.target))
+          .map(edge => edge.id)
+      );
+      return !edgeIdsToRemove.has(edge.id);
+    }), 'delete-grid');
+  }, [explorationHistory, edges, nodes, saveToHistory, setNodes, setEdges]);
 
   // Function to calculate grid layout for child nodes
   const calculateChildNodePositions = useCallback((parentNode: any, childCount: number) => {
@@ -272,7 +404,9 @@ export default function Home() {
             );
 
             const childPositions = calculateChildNodePositions(clickedNode, children.length);
-
+            const currentNodes = nodes;
+            const currentEdges = edges;
+            
             const newNodes = children.map((child: string, i: number) => ({
               id: `${clickedNode.id}-${i}`,
               position: childPositions[i],
@@ -292,15 +426,21 @@ export default function Home() {
               style: { stroke: clickedNode.data.color, strokeWidth: 2 },
             }));
 
-            setNodes((nds: Node[]) => [
-              ...nds.map(n => 
+            const updatedNodes = [
+              ...currentNodes.map(n => 
                 n.id === clickedNode.id 
                   ? { ...n, data: { ...n.data, childrenLoaded: true } }
                   : n
               ),
               ...newNodes
-            ]);
-            setEdges((eds: Edge[]) => [...eds, ...newEdges]);
+            ];
+            const updatedEdges = [...currentEdges, ...newEdges];
+            
+            setNodes(updatedNodes);
+            setEdges(updatedEdges);
+            
+            // Save to history after adding nodes
+            saveToHistory(updatedNodes, updatedEdges, 'add-children');
           } catch (error) {
             console.error("Error loading root node children:", error);
           } finally {
@@ -334,7 +474,9 @@ export default function Home() {
         );
 
         const childPositions = calculateChildNodePositions(clickedNode, children.length);
-
+        const currentNodes = nodes;
+        const currentEdges = edges;
+        
         const newNodes = children.map((child: string, i: number) => ({
           id: `${clickedNode.id}-${i}`,
           position: childPositions[i],
@@ -354,22 +496,28 @@ export default function Home() {
           style: { stroke: clickedNode.data.color, strokeWidth: 2 },
         }));
 
-        setNodes((nds: Node[]) => [
-          ...nds.map(n => 
+        const updatedNodes = [
+          ...currentNodes.map(n => 
             n.id === clickedNode.id 
               ? { ...n, data: { ...n.data, childrenLoaded: true } }
               : n
           ),
           ...newNodes
-        ]);
-        setEdges((eds: Edge[]) => [...eds, ...newEdges]);
+        ];
+        const updatedEdges = [...currentEdges, ...newEdges];
+        
+        setNodes(updatedNodes);
+        setEdges(updatedEdges);
+        
+        // Save to history after adding nodes
+        saveToHistory(updatedNodes, updatedEdges, 'add-children');
       } catch (error) {
         console.error("Error in onNodeClick:", error);
       } finally {
         setLoadingNodeId(null);
       }
     });
-  }, [loadingNodeId, setNodes, setEdges, startTransition]);
+  }, [loadingNodeId, nodes, edges, setNodes, setEdges, startTransition, saveToHistory, calculateChildNodePositions]);
 
   const resetToRoot = useCallback(() => {
     setSelectedRootId(null);
@@ -397,7 +545,10 @@ export default function Home() {
     
     setNodes(resetNodes);
     setEdges([]);
-  }, []);
+    
+    // Save to history after reset
+    saveToHistory(resetNodes, [], 'reset');
+  }, [saveToHistory]);
 
   const toggleShowAll = useCallback(() => {
   if (isShowingAll) {
@@ -542,6 +693,38 @@ export default function Home() {
             >
               Reset
             </Button>
+            {/* Undo/Redo buttons */}
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={undo}
+                disabled={historyIndex <= 0}
+                className="px-2 py-1 text-xs md:px-3 md:py-1 md:text-sm"
+              >
+                <Undo className="w-3 h-3 md:w-4 md:h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={redo}
+                disabled={historyIndex >= history.length - 1}
+                className="px-2 py-1 text-xs md:px-3 md:py-1 md:text-sm"
+              >
+                <Redo className="w-3 h-3 md:w-4 md:h-4" />
+              </Button>
+            </div>
+            {/* Delete last grid button */}
+            {explorationHistory.length > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={deleteLastGrid}
+                className="px-2 py-1 text-xs md:px-3 md:py-1 md:text-sm"
+              >
+                <X className="w-3 h-3 md:w-4 md:h-4" />
+              </Button>
+            )}
             {/* Show toggle button when at least one level deep or in show all mode */}
             {(selectedRootId || explorationHistory.length > 0 || isShowingAll) && (
               <Button
