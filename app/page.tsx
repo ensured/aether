@@ -109,7 +109,7 @@ export default function Home() {
     }));
     
     // Custom nodes
-    const customNodeInstances = loadCustomNodes().map((customNode, i) => {
+    const customNodeInstances = loadCustomNodes().map((customNode: { id: string; name: string; color: string }, i: number) => {
       const nodeIndex = ROOT_NODES.length + i;
       
       return {
