@@ -141,7 +141,7 @@ export const KeyboardShortcutsButton = ({
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={onClick}
-      className="fixed bottom-4 right-4 z-40 bg-primary text-primary-foreground w-10 h-10 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center"
+      className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 bg-primary text-primary-foreground w-10 h-10 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center"
       aria-label="Show keyboard shortcuts"
       title="Keyboard shortcuts (?)"
     >

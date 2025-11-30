@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { CustomNode } from "@/lib/types";
-import { GRID_CONFIG } from "@/lib/constants";
+import { GRID_CONFIG, getResponsiveGridConfig } from "@/lib/constants";
 
 export const useCameraControls = (isDragging = false) => {
   const { fitView, setCenter, getViewport } = useReactFlow();
@@ -68,13 +68,16 @@ export const useCameraControls = (isDragging = false) => {
 
       setIsPanning(true);
 
+      // Get responsive grid configuration
+      const responsiveConfig = getResponsiveGridConfig();
+
       // Simplified calculation - just focus on the parent with a reasonable offset
       const parentX = parentNode.position.x;
       const parentY = parentNode.position.y;
 
       // Calculate a simple center point based on child positions
       let avgChildX = parentX;
-      let avgChildY = parentY + GRID_CONFIG.childOffsetY + 100;
+      let avgChildY = parentY + responsiveConfig.childOffsetY + 100;
 
       if (childNodes.length > 0) {
         avgChildX =
@@ -85,12 +88,32 @@ export const useCameraControls = (isDragging = false) => {
           childNodes.length;
       }
 
-      // Center point between parent and average child position
-      const centerX = (parentX + avgChildX) / 2;
+      // For mobile, adjust centering to account for wider grid spread
+      const screenWidth = window.innerWidth;
+      let centerX = (parentX + avgChildX) / 2;
       const centerY = (parentY + avgChildY) / 2;
 
-      // Use a slightly zoomed-in view for better visibility of new nodes
-      const targetZoom = 1.4;
+      if (screenWidth < 640) {
+        // Mobile - shift center to the right to compensate for wider grid
+        const gridWidth = responsiveConfig.childNodesPerRow * (responsiveConfig.nodeWidth + responsiveConfig.childSpacing);
+        centerX += gridWidth * 0.15; // Shift right by 15% of grid width
+      } else if (screenWidth < 1024) {
+        // Tablet - smaller adjustment for 3-column grid
+        const gridWidth = responsiveConfig.childNodesPerRow * (responsiveConfig.nodeWidth + responsiveConfig.childSpacing);
+        centerX += gridWidth * 0.08; // Shift right by 8% of grid width
+      }
+
+      // Use responsive zoom based on screen size
+      let targetZoom = 1.4;
+
+      if (screenWidth < 640) {
+        // Mobile - zoom out even more to fit wider grid
+        targetZoom = 0.6;
+      } else if (screenWidth < 1024) {
+        // Tablet - use a more conservative zoom for consistency
+        targetZoom = 0.9;
+      }
+      // Desktop - keep original zoom
 
       // Smoothly animate to the new position and zoom
       setCenter(centerX, centerY, { zoom: targetZoom, duration });

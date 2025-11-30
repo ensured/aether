@@ -96,7 +96,7 @@ export const DotCameraPanningIndicator = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.5 }}
           transition={{ duration: 0.15 }}
-          className="fixed top-6 left-6 z-50"
+          className="fixed top-6 left-6 sm:top-8 sm:left-8 z-50"
         >
           <motion.div
             animate={{

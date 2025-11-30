@@ -13,6 +13,43 @@ export const GRID_CONFIG = {
   childVerticalSpacing: 24, // Vertical spacing between child rows
   childOffsetY: 130, // Distance below parent to start children
 
+  // Responsive configurations
+  responsive: {
+    mobile: {
+      nodesPerRow: 3, // 3 columns for mobile
+      childNodesPerRow: 3, // 3 columns for child nodes on mobile
+      nodeWidth: 160, // Slightly smaller nodes for mobile
+      nodeHeight: 70, // Keep same height
+      horizontalSpacing: 30, // More spacing between nodes
+      verticalSpacing: 20,
+      childSpacing: 20, // More spacing for child nodes
+      childVerticalSpacing: 15,
+      childOffsetY: 130, // Keep same offset
+    },
+    tablet: {
+      nodesPerRow: 3, // 3 columns for tablet
+      childNodesPerRow: 3, // 3 columns for child nodes on tablet
+      nodeWidth: 170,
+      nodeHeight: 70, // Keep same height
+      horizontalSpacing: 30,
+      verticalSpacing: 25,
+      childSpacing: 20,
+      childVerticalSpacing: 20,
+      childOffsetY: 130, // Keep same offset
+    },
+    desktop: {
+      nodesPerRow: 4, // Original 4 columns for desktop
+      childNodesPerRow: 4,
+      nodeWidth: 180,
+      nodeHeight: 70, // Original height
+      horizontalSpacing: 40,
+      verticalSpacing: 30,
+      childSpacing: 28,
+      childVerticalSpacing: 24,
+      childOffsetY: 130, // Original offset
+    },
+  },
+
   // Tree/hierarchy settings
   levelSpacing: 180, // Vertical space between tree levels
   siblingSpacing: 30, // Horizontal space between sibling nodes
@@ -91,6 +128,23 @@ export const STORAGE_KEYS = {
   CUSTOM_ROOT_NODES: "custom-root-nodes",
   LAYOUT_PREFERENCES: "layout-preferences",
 } as const;
+
+// Helper function to get responsive grid configuration
+export const getResponsiveGridConfig = () => {
+  if (typeof window === 'undefined') {
+    return GRID_CONFIG.responsive.desktop; // Default to desktop for SSR
+  }
+
+  const screenWidth = window.innerWidth;
+
+  if (screenWidth < 640) {
+    return GRID_CONFIG.responsive.mobile;
+  } else if (screenWidth < 1024) {
+    return GRID_CONFIG.responsive.tablet;
+  } else {
+    return GRID_CONFIG.responsive.desktop;
+  }
+};
 
 // Type exports for better type safety
 export type LayoutMode = (typeof LAYOUT_MODE)[keyof typeof LAYOUT_MODE];

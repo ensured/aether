@@ -171,7 +171,20 @@ const FlowWithControls = memo(() => {
     if (!selectedRootId && explorationHistory.states.length === 0) {
       // Small delay to ensure ReactFlow is fully initialized
       setTimeout(() => {
-        fitAllNodes(800, 0.05);
+        // Responsive padding based on screen size
+        const screenWidth = window.innerWidth;
+        let padding = 0.05;
+
+        if (screenWidth < 640) {
+          // Mobile - more padding to show everything
+          padding = 0.15;
+        } else if (screenWidth < 1024) {
+          // Tablet - moderate padding
+          padding = 0.1;
+        }
+        // Desktop - keep original padding
+
+        fitAllNodes(800, padding);
       }, 100);
     }
   }, [fitAllNodes, selectedRootId, explorationHistory.states.length]);
@@ -718,12 +731,12 @@ const FlowWithControls = memo(() => {
             color="var(--muted-foreground)"
             className="opacity-30"
           />
-          <MiniMap
+          {/* <MiniMap
             nodeColor="var(--muted-foreground)"
             zoomable
             pannable
             className="border rounded-md"
-          />
+          /> */}
           <Controls className="bg-background/80 backdrop-blur border" />
         </ReactFlow>
       </NodeContext.Provider>

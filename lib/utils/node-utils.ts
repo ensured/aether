@@ -1,4 +1,4 @@
-import { GRID_CONFIG } from "../constants";
+import { GRID_CONFIG, getResponsiveGridConfig } from "@/lib/constants";
 
 // Types for position calculations
 export interface Position {
@@ -28,13 +28,14 @@ export const calculateGridPosition = (
   index: number,
   options?: { nodesPerRow?: number; totalNodes?: number; viewportWidth?: number; viewportHeight?: number },
 ): Position => {
+  const responsiveConfig = getResponsiveGridConfig();
   const {
     nodesPerRow,
     nodeWidth,
     nodeHeight,
     horizontalSpacing,
     verticalSpacing,
-  } = GRID_CONFIG;
+  } = responsiveConfig;
 
   const columns = options?.nodesPerRow ?? nodesPerRow;
   const totalNodes = options?.totalNodes ?? 27; // Default to total root nodes
@@ -78,6 +79,7 @@ export const calculateChildPosition = (
   totalChildren: number,
   options?: { maxPerRow?: number },
 ): Position => {
+  const responsiveConfig = getResponsiveGridConfig();
   const {
     childNodesPerRow,
     nodeWidth,
@@ -85,7 +87,7 @@ export const calculateChildPosition = (
     childSpacing,
     childVerticalSpacing,
     childOffsetY,
-  } = GRID_CONFIG;
+  } = responsiveConfig;
 
   const maxPerRow = options?.maxPerRow ?? childNodesPerRow;
 
@@ -413,11 +415,12 @@ export const calculateFitZoom = (
  * Adapts the grid to look balanced
  */
 export const getOptimalChildrenPerRow = (totalChildren: number): number => {
-  if (totalChildren <= 3) return totalChildren;
-  if (totalChildren <= 6) return 3;
-  if (totalChildren <= 9) return 3;
-  if (totalChildren <= 12) return 4;
-  return 4; // Max 4 per row for readability
+  const responsiveConfig = getResponsiveGridConfig();
+  const maxPerRow = responsiveConfig.childNodesPerRow;
+
+  if (totalChildren <= maxPerRow) return totalChildren;
+  if (totalChildren <= maxPerRow * 2) return maxPerRow;
+  return maxPerRow; // Use responsive max per row
 };
 
 /**
