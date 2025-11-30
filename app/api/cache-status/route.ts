@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(body)) {
       const results = body.map(({ topic, path }) => {
         if (!topic) return { error: "Topic is required" };
-        const cacheKey = generateCacheKey("child-concepts", topic, path || []);
+        const cacheKey = generateCacheKey("child-concepts-v2", topic, path || [], "balanced");
         return { topic, ...cache.getMetadata(cacheKey) };
       });
       return NextResponse.json(results);
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate cache key (same as in groqActions)
-    const cacheKey = generateCacheKey("child-concepts", topic, path || []);
+    const cacheKey = generateCacheKey("child-concepts-v2", topic, path || [], "balanced");
 
     // Get cache metadata
     const metadata = cache.getMetadata(cacheKey);

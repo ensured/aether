@@ -25,7 +25,6 @@ export interface RootNodeConfig {
 export interface ExplorationState {
   nodeId: string;
   selectedRootId: string | null;
-  isShowingAll: boolean;
 }
 
 export interface ExplorationHistory {

@@ -22,11 +22,11 @@ export interface LayoutOptions {
 
 /**
  * Calculate grid position for root nodes
- * Creates a clean, evenly-spaced grid layout
+ * Creates a clean, evenly-spaced grid layout centered on the screen
  */
 export const calculateGridPosition = (
   index: number,
-  options?: { nodesPerRow?: number },
+  options?: { nodesPerRow?: number; totalNodes?: number; viewportWidth?: number; viewportHeight?: number },
 ): Position => {
   const {
     nodesPerRow,
@@ -34,17 +34,33 @@ export const calculateGridPosition = (
     nodeHeight,
     horizontalSpacing,
     verticalSpacing,
-    startX,
-    startY,
   } = GRID_CONFIG;
 
   const columns = options?.nodesPerRow ?? nodesPerRow;
+  const totalNodes = options?.totalNodes ?? 27; // Default to total root nodes
+  const viewportWidth = options?.viewportWidth ?? window.innerWidth ?? 1920;
+  const viewportHeight = options?.viewportHeight ?? window.innerHeight ?? 1080;
+
   const row = Math.floor(index / columns);
   const col = index % columns;
 
   // Calculate total width of a cell (node + spacing)
   const cellWidth = nodeWidth + horizontalSpacing;
   const cellHeight = nodeHeight + verticalSpacing;
+
+  // Calculate the total grid dimensions
+  const totalCols = Math.min(columns, totalNodes);
+  const totalRows = Math.ceil(totalNodes / columns);
+  const gridWidth = totalCols * cellWidth - horizontalSpacing; // Remove spacing from last column
+  const gridHeight = totalRows * cellHeight - verticalSpacing; // Remove spacing from last row
+
+  // Calculate center position for the grid
+  const gridCenterX = viewportWidth / 2;
+  const gridCenterY = viewportHeight / 2;
+
+  // Calculate the starting position to center the grid
+  const startX = gridCenterX - gridWidth / 2;
+  const startY = gridCenterY - gridHeight / 2;
 
   return {
     x: startX + col * cellWidth,

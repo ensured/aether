@@ -6,8 +6,6 @@ export const GRID_CONFIG = {
   nodeHeight: 70,
   horizontalSpacing: 40, // Increased from 10 for better separation
   verticalSpacing: 30, // Increased from 0 for better row separation
-  startX: 50,
-  startY: 80,
 
   // Child node configuration
   childNodesPerRow: 4, // Separate setting for child grids

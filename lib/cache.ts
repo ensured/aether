@@ -13,6 +13,7 @@ export interface CacheMetadata {
 }
 
 class Cache {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cache = new Map<string, CacheEntry<any>>();
   private readonly ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
 

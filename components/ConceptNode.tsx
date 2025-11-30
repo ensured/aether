@@ -57,15 +57,35 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
   const animationIndex = (data.animationIndex as number) ?? 0;
   const staggerDelay = animationIndex * 0.05; // 50ms stagger between each node
 
+  // Client-side cache countdown state
+  const [cacheMinutesLeft, setCacheMinutesLeft] = useState<number | null>(null);
+
+  // Update cache countdown every minute
+  useEffect(() => {
+    if (cacheStatus?.isCached && cacheStatus.expiresInMinutes) {
+      // Initialize with server value
+      setCacheMinutesLeft(cacheStatus.expiresInMinutes);
+
+      // Set up countdown timer
+      const interval = setInterval(() => {
+        setCacheMinutesLeft((prev) => {
+          if (prev === null || prev <= 1) return null; // Clear when expired
+          return prev - 1;
+        });
+      }, 60000); // Update every minute
+
+      return () => clearInterval(interval);
+    } else {
+      setCacheMinutesLeft(null);
+    }
+  }, [cacheStatus?.isCached, cacheStatus?.expiresInMinutes]);
+
   // Mark animation as complete after mount
   useEffect(() => {
     if (data.isNew && !hasAnimated) {
-      const timer = setTimeout(
-        () => {
-          setHasAnimated(true);
-        },
-        staggerDelay * 1000 + 500,
-      ); // Wait for animation to complete
+      const timer = setTimeout(() => {
+        setHasAnimated(true);
+      }, staggerDelay * 1000 + 500); // Wait for animation to complete
       return () => clearTimeout(timer);
     }
   }, [data.isNew, hasAnimated, staggerDelay]);
@@ -122,9 +142,25 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
   // Check if currently loading
   const isLoading = loadingNodeId === id;
 
+  // Determine text color based on background brightness
+  const getTextColor = (colorClass: string) => {
+    // Only yellow-400 needs dark text, all other palette colors work with white text
+    return colorClass.includes("bg-yellow-400")
+      ? "text-gray-900"
+      : "text-white";
+  };
+
+  const textColor = getTextColor(data.color || "bg-slate-600");
+
   return (
     <motion.div
-      className={`relative ${data.color} text-white rounded-lg shadow-lg py-2 px-3 cursor-pointer ${isLoading ? "ring-2 ring-white/50 ring-offset-2 ring-offset-transparent" : ""}`}
+      className={`relative ${
+        data.color || "bg-slate-600"
+      } ${textColor} rounded-lg shadow-lg py-2 px-3 cursor-pointer ${
+        isLoading
+          ? "ring-2 ring-white/50 ring-offset-2 ring-offset-transparent"
+          : ""
+      }`}
       style={{
         width: GRID_CONFIG.nodeWidth,
         minHeight: GRID_CONFIG.nodeHeight,
@@ -154,7 +190,7 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
         type="target"
         position={Position.Top}
         id="top"
-        className="!bg-white/50 !border-white !w-2 !h-2 !min-w-0 !min-h-0"
+        className="bg-white/50! border-white! w-2! h-2! min-w-0! min-h-0!"
         style={{ top: -4 }}
       />
 
@@ -172,7 +208,11 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                   scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
                 }}
               >
-                <Loader2 className="w-4 h-4 shrink-0 text-white drop-shadow-md" />
+                <Loader2
+                  className={`w-4 h-4 shrink-0 drop-shadow-md ${
+                    textColor === "text-white" ? "text-white" : "text-gray-900"
+                  }`}
+                />
               </motion.div>
             )}
             <motion.span
@@ -197,7 +237,11 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-6 w-6 hover:bg-white/20 hover:text-white transition-colors"
+                  className={`h-6 w-6 transition-colors ${
+                    textColor === "text-white"
+                      ? "hover:bg-white/20 hover:text-white"
+                      : "hover:bg-gray-900/20 hover:text-gray-900"
+                  }`}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     onOpenDialog(node);
@@ -252,7 +296,7 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                           onSetQuestion(e.target.value)
                         }
                         onKeyDown={(
-                          e: React.KeyboardEvent<HTMLInputElement>,
+                          e: React.KeyboardEvent<HTMLInputElement>
                         ) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
@@ -299,7 +343,11 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-6 w-6 hover:bg-white/20 text-white transition-colors"
+                className={`h-6 w-6 transition-colors ${
+                  textColor === "text-white"
+                    ? "hover:bg-white/20 text-white"
+                    : "hover:bg-gray-900/20 text-gray-900"
+                }`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   onRemoveNode(id);
@@ -310,29 +358,34 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
             )}
           </motion.div>
         </div>
-
-        {/* Cache status indicator */}
-        {cacheStatus?.isCached && (
-          <motion.div
-            className="flex items-center gap-1 mt-1"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Clock className="w-3 h-3 opacity-70" />
-            <span className="text-[10px] opacity-70">
-              Cached • {cacheStatus.expiresInMinutes}m left
-            </span>
-          </motion.div>
-        )}
       </div>
+
+      {/* Cache duration indicator at bottom right */}
+      {(cacheStatus?.isCached || cacheMinutesLeft !== null || true) && (
+        <motion.div
+          className={`absolute bottom-2 right-2 text-[10px] ${
+            textColor === "text-white" ? "opacity-70" : "opacity-60"
+          }`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <span>
+            {cacheMinutesLeft !== null
+              ? `cached for ${cacheMinutesLeft} min`
+              : cacheStatus?.isCached
+              ? `cached for ${cacheStatus.expiresInMinutes} min`
+              : "No cache"}
+          </span>
+        </motion.div>
+      )}
 
       {/* Source handle at bottom for outgoing edges */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        className="!bg-white/50 !border-white !w-2 !h-2 !min-w-0 !min-h-0"
+        className="bg-white/50! border-white! w-2! h-2! min-w-0! min-h-0!"
         style={{ bottom: -4 }}
       />
     </motion.div>

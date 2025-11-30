@@ -53,6 +53,7 @@ import {
   calculateChildPosition,
   getOptimalChildrenPerRow,
 } from "@/lib/utils/node-utils";
+import { getChildColor } from "@/lib/utils/color-utils";
 import { loadCustomNodes, saveCustomNodes } from "@/lib/utils/storage";
 
 const FlowWithControls = memo(() => {
@@ -65,9 +66,25 @@ const FlowWithControls = memo(() => {
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const [newRootNodeName, setNewRootNodeName] = useState("");
-  const [isShowingAll, setIsShowingAll] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [lastDialogInteraction, setLastDialogInteraction] = useState(0);
+  const [viewportDimensions, setViewportDimensions] = useState(() => ({
+    width: typeof window !== "undefined" ? window.innerWidth : 1920,
+    height: typeof window !== "undefined" ? window.innerHeight : 1080,
+  }));
+
+  // Update viewport dimensions on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Camera controls
   const { panToNewNodes, fitAllNodes, panToPosition, isPanning } =
@@ -104,7 +121,7 @@ const FlowWithControls = memo(() => {
     () => ({
       concept: ConceptNode,
     }),
-    [],
+    []
   );
 
   // Define edge types (memoized to prevent re-creation)
@@ -112,7 +129,7 @@ const FlowWithControls = memo(() => {
     () => ({
       animated: AnimatedEdge,
     }),
-    [],
+    []
   );
 
   // Initialize nodes
@@ -121,7 +138,11 @@ const FlowWithControls = memo(() => {
     return allRootNodes.map((node, i) => ({
       id: node.id,
       type: "concept",
-      position: calculateGridPosition(i),
+      position: calculateGridPosition(i, {
+        totalNodes: allRootNodes.length,
+        viewportWidth: viewportDimensions.width,
+        viewportHeight: viewportDimensions.height,
+      }),
       data: {
         label: node.name,
         color: node.color,
@@ -129,19 +150,31 @@ const FlowWithControls = memo(() => {
         childrenLoaded: false,
       },
     }));
-  }, []);
+  }, [viewportDimensions]);
 
-  const [nodes, setNodes, onNodesChange] =
-    useNodesState<CustomNode>(getInitialNodes());
+  const [nodes, setNodes, onNodesChange] = useNodesState<CustomNode>(
+    getInitialNodes()
+  );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   // Save custom nodes to localStorage
   useEffect(() => {
     const customOnly = rootNodes.filter(
-      (node) => !ROOT_NODES.some((originalNode) => originalNode.id === node.id),
+      (node) => !ROOT_NODES.some((originalNode) => originalNode.id === node.id)
     );
     saveCustomNodes(customOnly);
   }, [rootNodes]);
+
+  // Fit view to all nodes on initial mount
+  useEffect(() => {
+    // Only run on initial mount when no root is selected and no exploration history
+    if (!selectedRootId && explorationHistory.states.length === 0) {
+      // Small delay to ensure ReactFlow is fully initialized
+      setTimeout(() => {
+        fitAllNodes(800, 0.05);
+      }, 100);
+    }
+  }, [fitAllNodes, selectedRootId, explorationHistory.states.length]);
 
   // Handle opening dialog for a node
   const handleNodeDialog = useCallback(
@@ -149,7 +182,7 @@ const FlowWithControls = memo(() => {
       resetInfo();
       getNodeInfo(node);
     },
-    [getNodeInfo, resetInfo],
+    [getNodeInfo, resetInfo]
   );
 
   // Fetch cache statuses for nodes with debouncing
@@ -176,7 +209,7 @@ const FlowWithControls = memo(() => {
                 batch.map((n: CustomNode) => ({
                   topic: n.data.label,
                   path: n.data.path,
-                })),
+                }))
               ),
             });
 
@@ -185,7 +218,7 @@ const FlowWithControls = memo(() => {
             setNodes((nds) =>
               nds.map((node) => {
                 const result = results.find(
-                  (r: { topic: string }) => r.topic === node.data.label,
+                  (r: { topic: string }) => r.topic === node.data.label
                 );
                 if (result && !node.data.cacheStatus) {
                   return {
@@ -194,18 +227,18 @@ const FlowWithControls = memo(() => {
                   };
                 }
                 return node;
-              }),
+              })
             );
           } catch (error) {
             console.error(
               `Error fetching cache statuses for batch ${i}:`,
-              error,
+              error
             );
           }
         }, i * 200); // Stagger requests by 200ms
       }
     },
-    [setNodes],
+    [setNodes]
   );
 
   // Initial cache fetch with better debouncing
@@ -229,7 +262,7 @@ const FlowWithControls = memo(() => {
 
         const children = await getChildConcepts(
           clickedNode.data.label as string,
-          clickedNode.data.path,
+          clickedNode.data.path
         );
 
         // Limit to maximum 12 nodes for performance
@@ -245,11 +278,15 @@ const FlowWithControls = memo(() => {
             clickedNode.position,
             i,
             limitedChildren.length,
-            { maxPerRow: optimalPerRow },
+            { maxPerRow: optimalPerRow }
           ),
           data: {
             label: child,
-            color: clickedNode.data.color,
+            // Get lighter shade based on depth in the tree
+            color: getChildColor(clickedNode.data.color, [
+              ...clickedNode.data.path,
+              child,
+            ]),
             path: [...clickedNode.data.path, child],
             childrenLoaded: false,
             animationIndex: i, // For staggered entry animations
@@ -275,8 +312,21 @@ const FlowWithControls = memo(() => {
           setNodes((nds) => [
             ...nds.map((n) =>
               n.id === clickedNode.id
-                ? { ...n, data: { ...n.data, childrenLoaded: true } }
-                : n,
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      childrenLoaded: true,
+                      // Add immediate cache status - concepts are cached for 60 minutes
+                      cacheStatus: {
+                        isCached: true,
+                        timestamp: Date.now(),
+                        expiresIn: 60 * 60 * 1000, // 60 minutes in ms
+                        expiresInMinutes: 60,
+                      },
+                    },
+                  }
+                : n
             ),
             ...newNodes,
           ]);
@@ -302,7 +352,7 @@ const FlowWithControls = memo(() => {
         }, 150);
       }
     },
-    [setNodes, setEdges, fetchCacheStatuses, panToNewNodes, startTransition],
+    [setNodes, setEdges, fetchCacheStatuses, panToNewNodes, startTransition]
   );
 
   // Handle node drag start
@@ -333,7 +383,6 @@ const FlowWithControls = memo(() => {
       // If this is a root node, toggle selection
       if (rootNodes.some((node) => node.id === clickedNode.id)) {
         const wasSelected = selectedRootId === clickedNode.id;
-        setIsShowingAll(false);
         setSelectedRootId(wasSelected ? null : clickedNode.id);
 
         if (!wasSelected) {
@@ -342,7 +391,6 @@ const FlowWithControls = memo(() => {
               {
                 nodeId: clickedNode.id,
                 selectedRootId: clickedNode.id,
-                isShowingAll: false,
               },
             ],
             currentIndex: 0,
@@ -370,7 +418,6 @@ const FlowWithControls = memo(() => {
       addToHistory({
         nodeId: clickedNode.id,
         selectedRootId: clickedNode.id,
-        isShowingAll: false,
       });
 
       startTransition(() => loadChildrenForNode(clickedNode));
@@ -386,14 +433,13 @@ const FlowWithControls = memo(() => {
       resetHistory,
       isDragging,
       lastDialogInteraction,
-    ],
+    ]
   );
 
   // Reset to root view
   const resetToRoot = useCallback(() => {
     setSelectedRootId(null);
     resetHistory();
-    setIsShowingAll(false);
 
     const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
     setRootNodes(allRootNodes);
@@ -401,7 +447,11 @@ const FlowWithControls = memo(() => {
     const resetNodes = allRootNodes.map((rootNode, i) => ({
       id: rootNode.id,
       type: "concept",
-      position: calculateGridPosition(i),
+      position: calculateGridPosition(i, {
+        totalNodes: allRootNodes.length,
+        viewportWidth: viewportDimensions.width,
+        viewportHeight: viewportDimensions.height,
+      }),
       data: {
         label: rootNode.name,
         color: rootNode.color,
@@ -417,7 +467,7 @@ const FlowWithControls = memo(() => {
     setTimeout(() => {
       fitAllNodes(800, 0.1);
     }, 100);
-  }, [setNodes, setEdges, resetHistory, fitAllNodes]);
+  }, [setNodes, setEdges, resetHistory, fitAllNodes, viewportDimensions]);
 
   // Navigate back in history
   const navigateBack = useCallback(() => {
@@ -430,44 +480,25 @@ const FlowWithControls = memo(() => {
       const previousState =
         explorationHistory.states[explorationHistory.currentIndex - 1];
       setSelectedRootId(previousState.selectedRootId);
-      setIsShowingAll(previousState.isShowingAll);
     }
   }, [navigateBackHistory, resetToRoot, explorationHistory]);
-
-  // Toggle show all nodes
-  const toggleShowAll = useCallback(() => {
-    if (isShowingAll) {
-      setIsShowingAll(false);
-      if (
-        explorationHistory.states.length > 0 &&
-        explorationHistory.currentIndex >= 0
-      ) {
-        const currentState =
-          explorationHistory.states[explorationHistory.currentIndex];
-        setSelectedRootId(currentState.selectedRootId);
-      }
-    } else {
-      setIsShowingAll(true);
-      setSelectedRootId(null);
-      // Fit view when showing all nodes
-      setTimeout(() => {
-        fitAllNodes(800, 0.05);
-      }, 100);
-    }
-  }, [isShowingAll, explorationHistory, fitAllNodes]);
 
   // Recalculate node positions
   const recalculateNodePositions = useCallback(
     (allRootNodes: RootNodeConfig[], currentNodes: CustomNode[]) => {
       return allRootNodes.map((rootNode, i) => {
         const existingNode = currentNodes.find(
-          (node) => node.id === rootNode.id,
+          (node) => node.id === rootNode.id
         );
 
         return {
           id: rootNode.id,
           type: "concept",
-          position: calculateGridPosition(i),
+          position: calculateGridPosition(i, {
+            totalNodes: allRootNodes.length,
+            viewportWidth: viewportDimensions.width,
+            viewportHeight: viewportDimensions.height,
+          }),
           data: {
             label: rootNode.name,
             color: rootNode.color,
@@ -477,7 +508,7 @@ const FlowWithControls = memo(() => {
         };
       });
     },
-    [],
+    [viewportDimensions]
   );
 
   // Remove custom root node
@@ -493,7 +524,7 @@ const FlowWithControls = memo(() => {
         const findDescendants = (parentId: string) => {
           prev.forEach((node) => {
             const edge = edges.find(
-              (e) => e.source === parentId && e.target === node.id,
+              (e) => e.source === parentId && e.target === node.id
             );
             if (edge) {
               nodesToRemove.add(node.id);
@@ -534,7 +565,7 @@ const FlowWithControls = memo(() => {
         currentIndex: prev.currentIndex,
       }));
     },
-    [edges, selectedRootId, setNodes, setEdges, resetHistory, updateHistory],
+    [edges, selectedRootId, setNodes, setEdges, resetHistory, updateHistory]
   );
 
   // Add new root node
@@ -557,7 +588,7 @@ const FlowWithControls = memo(() => {
     const updatedNodes = recalculateNodePositions(updatedRootNodes, nodes);
 
     const existingNonRootNodes = nodes.filter(
-      (node) => !rootNodes.some((rootNode) => rootNode.id === node.id),
+      (node) => !rootNodes.some((rootNode) => rootNode.id === node.id)
     );
 
     setNodes([...updatedNodes, ...existingNonRootNodes]);
@@ -566,7 +597,7 @@ const FlowWithControls = memo(() => {
     // Pan to show the new node
     setTimeout(() => {
       const newNodePosition = calculateGridPosition(
-        updatedRootNodes.length - 1,
+        updatedRootNodes.length - 1
       );
       panToPosition(newNodePosition.x, newNodePosition.y, 1, 800);
     }, 100);
@@ -592,7 +623,7 @@ const FlowWithControls = memo(() => {
       if (mostRecentState) {
         const isChild = edges.some(
           (edge) =>
-            edge.source === mostRecentState.nodeId && edge.target === node.id,
+            edge.source === mostRecentState.nodeId && edge.target === node.id
         );
         if (isChild) return true;
       }
@@ -629,11 +660,11 @@ const FlowWithControls = memo(() => {
       removeCustomRootNode,
       handleNodeDialog,
       askQuestion,
-    ],
+    ]
   );
 
   return (
-    <div className="w-screen h-screen bg-background text-foreground relative">
+    <div className="w-screen h-screen relative">
       <DotCameraPanningIndicator isVisible={isPanning} />
       <KeyboardShortcutsButton onClick={toggleHelp} />
       <KeyboardShortcutsHelp isOpen={isHelpOpen} onClose={closeHelp} />
@@ -642,12 +673,10 @@ const FlowWithControls = memo(() => {
         explorationHistoryLength={explorationHistory.states.length}
         currentIndex={explorationHistory.currentIndex}
         selectedRootId={selectedRootId}
-        isShowingAll={isShowingAll}
         newRootNodeName={newRootNodeName}
         onSetNewRootNodeName={setNewRootNodeName}
         onNavigateBack={navigateBack}
         onReset={resetToRoot}
-        onToggleShowAll={toggleShowAll}
         onAddNewRootNode={addNewRootNode}
       />
 
