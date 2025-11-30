@@ -63,29 +63,35 @@ export const NavigationControls = ({
                 </Button>
               </CollapsibleTrigger>
 
-              {/* Center: Navigation buttons */}
+              {/* Center: Title or Navigation buttons */}
               <div className="flex items-center gap-1">
-                {showBackButton && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={onNavigateBack}
-                    className="h-8 px-2 gap-1"
-                  >
-                    <ArrowLeftCircle className="h-4 w-4" />
-                    <span className="text-xs">Back</span>
-                  </Button>
-                )}
-                {showResetButton && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={onReset}
-                    className="h-8 px-2 gap-1"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    <span className="text-xs">Reset</span>
-                  </Button>
+                {!showBackButton && !showResetButton ? (
+                  <h1 className="text-lg font-bold tracking-tight">Concept Explorer</h1>
+                ) : (
+                  <>
+                    {showBackButton && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onNavigateBack}
+                        className="h-8 px-2 gap-1"
+                      >
+                        <ArrowLeftCircle className="h-4 w-4" />
+                        <span className="text-xs">Back</span>
+                      </Button>
+                    )}
+                    {showResetButton && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onReset}
+                        className="h-8 px-2 gap-1"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        <span className="text-xs">Reset</span>
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -94,13 +100,8 @@ export const NavigationControls = ({
             </div>
 
             {/* Collapsible content */}
-            <CollapsibleContent className="px-4 pb-4">
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-center justify-between gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight">Aether</h1>
-                </div>
-
+            <CollapsibleContent className="px-0.5 pb-4 pt-1.5">
+              <div className="space-y-2">
                 {/* Add node input */}
                 <div className="flex items-center gap-2">
                   <Input

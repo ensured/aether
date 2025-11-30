@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aether - Concept Explorer",
+  title: "Concept Explorer",
   description: "Explore concepts and their relationships",
 };
 
