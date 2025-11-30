@@ -50,7 +50,7 @@ export const NavigationControls = ({
     <>
       {/* Mobile - Top navigation bar */}
       <div className="sm:hidden absolute top-4 left-4 right-4 z-50">
-        <div className="backdrop-blur-sm bg-background/50 border border-border/15 rounded-lg">
+        <div className="backdrop-blur-sm bg-background/60 border border-border/15 rounded-lg">
           <Collapsible
             open={isMobileMenuOpen}
             onOpenChange={setIsMobileMenuOpen}
