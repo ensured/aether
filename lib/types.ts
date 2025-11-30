@@ -7,6 +7,8 @@ export interface NodeData extends Record<string, unknown> {
   path: string[];
   childrenLoaded: boolean;
   cacheStatus?: { isCached: boolean; expiresInMinutes?: number };
+  animationIndex?: number; // Index for staggered entry animations
+  isNew?: boolean; // Flag to control entry animations (only animate truly new nodes)
 }
 
 // Custom node type with extended data

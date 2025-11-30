@@ -9,15 +9,15 @@ const groq = new Groq({
 
 export async function getChildConcepts(
   topicInput: string,
-  parentPathInput: string[] | string
+  parentPathInput: string[] | string,
 ) {
   // Ensure inputs are properly typed and handle potential client references
   const topic = typeof topicInput === "string" ? topicInput : "";
   const parentPath = Array.isArray(parentPathInput)
     ? parentPathInput
     : typeof parentPathInput === "string"
-    ? [parentPathInput]
-    : [];
+      ? [parentPathInput]
+      : [];
 
   // Generate cache key
   const cacheKey = generateCacheKey("child-concepts", topic, parentPath);
@@ -40,8 +40,8 @@ export async function getChildConcepts(
       messages: [
         {
           role: "system",
-          content: `You are an oracle of infinite knowledge. 
-          When given a concept, return up to 32 profound, diverse, and meaningful sub-concepts.
+          content: `You are an oracle of infinite knowledge.
+          When given a concept, return 10-20 profound, diverse, and meaningful sub-concepts.
           Return ONLY a valid JSON array of strings. No explanations, no markdown, no extra text.
           Example: ["Quantum Entanglement", "Black Holes", "Dark Matter", "Wormholes"]`,
         },
@@ -51,8 +51,8 @@ export async function getChildConcepts(
         },
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.9,
-      max_completion_tokens: 700,
+      temperature: 0.8,
+      max_completion_tokens: 300,
     });
 
     const content = completion.choices[0]?.message?.content?.trim() || "[]";

@@ -1,15 +1,40 @@
-// Grid layout configuration
+// Grid layout configuration with improved spacing
 export const GRID_CONFIG = {
+  // Root node grid settings
   nodesPerRow: 4,
   nodeWidth: 180,
-  nodeHeight: 60,
-  horizontalSpacing: 10,
-  verticalSpacing: 0,
-  startX: 100,
-  startY: 160,
+  nodeHeight: 70,
+  horizontalSpacing: 40, // Increased from 10 for better separation
+  verticalSpacing: 30, // Increased from 0 for better row separation
+  startX: 50,
+  startY: 80,
+
   // Child node configuration
-  childSpacing: 32, // Spacing to prevent overlap with Card padding
-  childOffsetY: 90, // Move children well below parent
+  childNodesPerRow: 4, // Separate setting for child grids
+  childSpacing: 28, // Horizontal spacing between child nodes
+  childVerticalSpacing: 24, // Vertical spacing between child rows
+  childOffsetY: 130, // Distance below parent to start children
+
+  // Tree/hierarchy settings
+  levelSpacing: 180, // Vertical space between tree levels
+  siblingSpacing: 30, // Horizontal space between sibling nodes
+  subtreeSpacing: 60, // Extra space between different subtrees
+
+  // Animation and interaction
+  animationDuration: 300,
+
+  // Bounds and limits
+  minZoom: 0.1,
+  maxZoom: 2.5,
+  padding: 50, // Padding around the canvas edges
+} as const;
+
+// Layout modes for different visualization styles
+export const LAYOUT_MODE = {
+  GRID: "grid",
+  RADIAL: "radial",
+  TREE: "tree",
+  FORCE: "force",
 } as const;
 
 // Root nodes configuration
@@ -66,4 +91,10 @@ export const COLORS = [
 // LocalStorage keys
 export const STORAGE_KEYS = {
   CUSTOM_ROOT_NODES: "custom-root-nodes",
+  LAYOUT_PREFERENCES: "layout-preferences",
 } as const;
+
+// Type exports for better type safety
+export type LayoutMode = (typeof LAYOUT_MODE)[keyof typeof LAYOUT_MODE];
+export type RootNodeConfig = (typeof ROOT_NODES)[number];
+export type NodeColor = (typeof COLORS)[number];
