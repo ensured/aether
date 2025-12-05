@@ -30,7 +30,7 @@ interface NavigationControlsProps {
 }
 
 /**
- * Navigation controls for the concept explorer
+ * Navigation controls for the topic explorer
  */
 export const NavigationControls = ({
   explorationHistoryLength,
@@ -66,7 +66,7 @@ export const NavigationControls = ({
               {/* Center: Title or Navigation buttons */}
               <div className="flex items-center gap-1">
                 {!showBackButton && !showResetButton ? (
-                  <h1 className="text-lg font-bold tracking-tight">Concept Explorer</h1>
+                  <h1 className="text-lg font-bold tracking-tight">Topic Explorer</h1>
                 ) : (
                   <>
                     {showBackButton && (
@@ -100,12 +100,12 @@ export const NavigationControls = ({
             </div>
 
             {/* Collapsible content */}
-            <CollapsibleContent className="px-0.5 pb-4 pt-1.5">
+            <CollapsibleContent className="px-0.5 pb-4 pt-1.5 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
               <div className="space-y-2">
                 {/* Add node input */}
                 <div className="flex items-center gap-2">
                   <Input
-                    placeholder="Add new concept..."
+                    placeholder="Add new topic..."
                     value={newRootNodeName}
                     onChange={(e) => onSetNewRootNodeName(e.target.value)}
                     onKeyDown={(e) => {
@@ -127,7 +127,7 @@ export const NavigationControls = ({
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Click any concept to explore its connections
+                  Click any topic to explore its connections
                 </p>
               </div>
             </CollapsibleContent>
@@ -175,7 +175,7 @@ export const NavigationControls = ({
             {/* Add node input row */}
             <div className="flex items-center gap-1 px-2">
               <Input
-                placeholder="Add new concept..."
+                placeholder="Add new topic..."
                 value={newRootNodeName}
                 onChange={(e) => onSetNewRootNodeName(e.target.value)}
                 onKeyDown={(e) => {
@@ -197,7 +197,7 @@ export const NavigationControls = ({
             </div>
 
             <p className="text-xs text-muted-foreground flex items-center p-3">
-              Click any concept to explore its connections
+              Click any topic to explore its connections
             </p>
           </div>
         </div>

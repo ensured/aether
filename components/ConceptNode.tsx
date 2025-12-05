@@ -19,7 +19,7 @@ import { NodeProps, Handle, Position } from "@xyflow/react";
 import { useNodeContext } from "@/components/NodeContext";
 
 /**
- * Renders a concept node with info dialog, delete functionality, and entry animations
+ * Renders a topic node with info dialog, delete functionality, and entry animations
  */
 export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
   const {
@@ -267,12 +267,19 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                   {/* About section */}
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                      About this concept
+                      About this topic
                     </h4>
                     {isLoadingInfo ? (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Loading information...</span>
+                      <div className="space-y-2">
+                        {/* Skeleton lines to match 182px height */}
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-4/5"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-5/6"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-2/3"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-4/5"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-5/6"></div>
                       </div>
                     ) : (
                       <p className="text-sm leading-relaxed">{nodeInfo}</p>

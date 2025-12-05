@@ -15,15 +15,31 @@ export interface CacheMetadata {
 class Cache {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private cache = new Map<string, CacheEntry<any>>();
-  private readonly ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+  private readonly TWELVE_HOURS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+  private readonly SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
   set<T>(key: string, data: T): void {
     const now = Date.now();
     this.cache.set(key, {
       data,
       timestamp: now,
-      expiry: now + this.ONE_HOUR,
+      expiry: now + this.TWELVE_HOURS,
     });
+  }
+
+  // Set with custom duration
+  setWithDuration<T>(key: string, data: T, durationMs: number): void {
+    const now = Date.now();
+    this.cache.set(key, {
+      data,
+      timestamp: now,
+      expiry: now + durationMs,
+    });
+  }
+
+  // Set with 7-day duration (for descriptions)
+  setDescription<T>(key: string, data: T): void {
+    this.setWithDuration(key, data, this.SEVEN_DAYS);
   }
 
   get<T>(key: string): T | null {

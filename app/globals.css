@@ -393,6 +393,41 @@ html.transitioning *::after {
   }
 }
 
+/* Collapsible menu animations */
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.animate-collapsible-down {
+  animation: collapsible-down 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-collapsible-up {
+  animation: collapsible-up 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Ensure all color classes are available for concept nodes */
 .bg-emerald-500 {
   background-color: rgb(16 185 129);

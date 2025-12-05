@@ -25,7 +25,7 @@ import "@xyflow/react/dist/style.css";
 import AnimatedEdge from "@/components/AnimatedEdge";
 
 // Server actions
-import { getChildConcepts } from "@/actions/groqActions";
+
 
 // Components
 import { ConceptNode } from "@/components/ConceptNode";
@@ -43,6 +43,8 @@ import { useNodeInfo } from "@/hooks/useNodeInfo";
 import { useExplorationHistory } from "@/hooks/useExplorationHistory";
 import { useCameraControls } from "@/hooks/useCameraControls";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useNodeOperations } from "@/hooks/useNodeOperations";
+import { useRootNodes } from "@/hooks/useRootNodes";
 
 // Utils & Types
 import { Edge } from "@xyflow/react";
@@ -50,22 +52,13 @@ import { CustomNode, RootNodeConfig } from "@/lib/types";
 import { ROOT_NODES, COLORS } from "@/lib/constants";
 import {
   calculateGridPosition,
-  calculateChildPosition,
-  getOptimalChildrenPerRow,
 } from "@/lib/utils/node-utils";
-import { getChildColor } from "@/lib/utils/color-utils";
-import { loadCustomNodes, saveCustomNodes } from "@/lib/utils/storage";
+import { loadCustomNodes } from "@/lib/utils/storage";
 
 const FlowWithControls = memo(() => {
   // State management
-  const [rootNodes, setRootNodes] = useState<RootNodeConfig[]>(() => [
-    ...ROOT_NODES,
-    ...loadCustomNodes(),
-  ]);
-  const [loadingNodeId, setLoadingNodeId] = useState<string | null>(null);
   const [selectedRootId, setSelectedRootId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const [newRootNodeName, setNewRootNodeName] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [lastDialogInteraction, setLastDialogInteraction] = useState(0);
   const [viewportDimensions, setViewportDimensions] = useState(() => ({
@@ -116,22 +109,6 @@ const FlowWithControls = memo(() => {
   // Keyboard shortcuts
   useKeyboardShortcuts(toggleHelp, isDragging);
 
-  // Define node types (memoized to prevent re-creation)
-  const nodeTypes = useMemo(
-    () => ({
-      concept: ConceptNode,
-    }),
-    []
-  );
-
-  // Define edge types (memoized to prevent re-creation)
-  const edgeTypes = useMemo(
-    () => ({
-      animated: AnimatedEdge,
-    }),
-    []
-  );
-
   // Initialize nodes
   const getInitialNodes = useCallback(() => {
     const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
@@ -157,13 +134,57 @@ const FlowWithControls = memo(() => {
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  // Save custom nodes to localStorage
-  useEffect(() => {
-    const customOnly = rootNodes.filter(
-      (node) => !ROOT_NODES.some((originalNode) => originalNode.id === node.id)
-    );
-    saveCustomNodes(customOnly);
-  }, [rootNodes]);
+  // Node Operations Hook
+  const {
+    loadingNodeId,
+    setLoadingNodeId,
+    loadChildrenForNode,
+    fetchCacheStatuses,
+  } = useNodeOperations({
+    nodes,
+    setNodes,
+    setEdges,
+    panToNewNodes,
+  });
+
+  // Root Nodes Hook
+  const {
+    rootNodes,
+    setRootNodes,
+    newRootNodeName,
+    setNewRootNodeName,
+    addNewRootNode,
+    removeCustomRootNode,
+    resetToRoot,
+  } = useRootNodes({
+    nodes,
+    setNodes,
+    edges,
+    setEdges,
+    viewportDimensions,
+    fitAllNodes,
+    panToPosition,
+    resetHistory,
+    updateHistory,
+    selectedRootId,
+    setSelectedRootId,
+  });
+
+  // Define node types (memoized to prevent re-creation)
+  const nodeTypes = useMemo(
+    () => ({
+      concept: ConceptNode,
+    }),
+    []
+  );
+
+  // Define edge types (memoized to prevent re-creation)
+  const edgeTypes = useMemo(
+    () => ({
+      animated: AnimatedEdge,
+    }),
+    []
+  );
 
   // Fit view to all nodes on initial mount
   useEffect(() => {
@@ -198,175 +219,9 @@ const FlowWithControls = memo(() => {
     [getNodeInfo, resetInfo]
   );
 
-  // Fetch cache statuses for nodes with debouncing
-  const fetchCacheStatuses = useCallback(
-    async (nodesToFetch: CustomNode[]) => {
-      if (nodesToFetch.length === 0) return;
 
-      // Process in smaller batches to avoid overwhelming the API
-      const batchSize = 6;
-      const batches: CustomNode[][] = [];
-      for (let i = 0; i < nodesToFetch.length; i += batchSize) {
-        batches.push(nodesToFetch.slice(i, i + batchSize));
-      }
 
-      // Process batches with delays to prevent API overload
-      for (let i = 0; i < batches.length; i++) {
-        setTimeout(async () => {
-          try {
-            const batch = batches[i];
-            const response = await fetch("/api/cache-status", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(
-                batch.map((n: CustomNode) => ({
-                  topic: n.data.label,
-                  path: n.data.path,
-                }))
-              ),
-            });
 
-            const results = await response.json();
-
-            setNodes((nds) =>
-              nds.map((node) => {
-                const result = results.find(
-                  (r: { topic: string }) => r.topic === node.data.label
-                );
-                if (result && !node.data.cacheStatus) {
-                  return {
-                    ...node,
-                    data: { ...node.data, cacheStatus: result },
-                  };
-                }
-                return node;
-              })
-            );
-          } catch (error) {
-            console.error(
-              `Error fetching cache statuses for batch ${i}:`,
-              error
-            );
-          }
-        }, i * 200); // Stagger requests by 200ms
-      }
-    },
-    [setNodes]
-  );
-
-  // Initial cache fetch with better debouncing
-  useEffect(() => {
-    const nodesWithoutCache = nodes.filter((n) => !n.data.cacheStatus);
-    if (nodesWithoutCache.length > 0) {
-      // Longer debounce to prevent excessive API calls
-      const timer = setTimeout(() => {
-        fetchCacheStatuses(nodesWithoutCache);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [fetchCacheStatuses]);
-
-  // Load children for any node
-  const loadChildrenForNode = useCallback(
-    async (clickedNode: CustomNode) => {
-      try {
-        // Note: setLoadingNodeId is now called immediately in onNodeClick for optimistic UI
-        // We don't set it here to avoid any delay from startTransition
-
-        const children = await getChildConcepts(
-          clickedNode.data.label as string,
-          clickedNode.data.path
-        );
-
-        // Limit to maximum 12 nodes for performance
-        const limitedChildren = children.slice(0, 12);
-
-        // Calculate optimal layout based on number of children
-        const optimalPerRow = getOptimalChildrenPerRow(limitedChildren.length);
-
-        const newNodes = limitedChildren.map((child: string, i: number) => ({
-          id: `${clickedNode.id}-${i}`,
-          type: "concept",
-          position: calculateChildPosition(
-            clickedNode.position,
-            i,
-            limitedChildren.length,
-            { maxPerRow: optimalPerRow }
-          ),
-          data: {
-            label: child,
-            // Get lighter shade based on depth in the tree
-            color: getChildColor(clickedNode.data.color, [
-              ...clickedNode.data.path,
-              child,
-            ]),
-            path: [...clickedNode.data.path, child],
-            childrenLoaded: false,
-            animationIndex: i, // For staggered entry animations
-            isNew: true, // Flag for entry animation (only new nodes animate)
-          },
-        }));
-
-        const newEdges = limitedChildren.map((_: string, i: number) => ({
-          id: `e-${clickedNode.id}-${i}`,
-          source: clickedNode.id,
-          target: `${clickedNode.id}-${i}`,
-          type: "animated", // Use custom animated edge
-          style: {
-            stroke: "rgba(148, 163, 184, 0.6)",
-            strokeWidth: 1.5,
-          },
-          sourceHandle: "bottom",
-          targetHandle: "top",
-        }));
-
-        // Batch state updates using React's automatic batching
-        startTransition(() => {
-          setNodes((nds) => [
-            ...nds.map((n) =>
-              n.id === clickedNode.id
-                ? {
-                    ...n,
-                    data: {
-                      ...n.data,
-                      childrenLoaded: true,
-                      // Add immediate cache status - concepts are cached for 60 minutes
-                      cacheStatus: {
-                        isCached: true,
-                        timestamp: Date.now(),
-                        expiresIn: 60 * 60 * 1000, // 60 minutes in ms
-                        expiresInMinutes: 60,
-                      },
-                    },
-                  }
-                : n
-            ),
-            ...newNodes,
-          ]);
-          setEdges((eds) => [...eds, ...newEdges]);
-        });
-
-        // Delay expensive operations until after render
-        setTimeout(() => {
-          // Pan camera first for immediate visual feedback
-          panToNewNodes(clickedNode, newNodes);
-
-          // Fetch cache for new nodes after a longer delay
-          setTimeout(() => {
-            fetchCacheStatuses(newNodes);
-          }, 300);
-        }, 150);
-      } catch (error) {
-        console.error("Error loading children:", error);
-      } finally {
-        // Clear loading state after a delay to prevent flicker
-        setTimeout(() => {
-          setLoadingNodeId(null);
-        }, 150);
-      }
-    },
-    [setNodes, setEdges, fetchCacheStatuses, panToNewNodes, startTransition]
-  );
 
   // Handle node drag start
   const onNodeDragStart = useCallback(() => {
@@ -449,38 +304,7 @@ const FlowWithControls = memo(() => {
     ]
   );
 
-  // Reset to root view
-  const resetToRoot = useCallback(() => {
-    setSelectedRootId(null);
-    resetHistory();
 
-    const allRootNodes = [...ROOT_NODES, ...loadCustomNodes()];
-    setRootNodes(allRootNodes);
-
-    const resetNodes = allRootNodes.map((rootNode, i) => ({
-      id: rootNode.id,
-      type: "concept",
-      position: calculateGridPosition(i, {
-        totalNodes: allRootNodes.length,
-        viewportWidth: viewportDimensions.width,
-        viewportHeight: viewportDimensions.height,
-      }),
-      data: {
-        label: rootNode.name,
-        color: rootNode.color,
-        path: [rootNode.name],
-        childrenLoaded: false,
-      },
-    }));
-
-    setNodes(resetNodes);
-    setEdges([]);
-
-    // Fit view to show all root nodes
-    setTimeout(() => {
-      fitAllNodes(800, 0.1);
-    }, 100);
-  }, [setNodes, setEdges, resetHistory, fitAllNodes, viewportDimensions]);
 
   // Navigate back in history
   const navigateBack = useCallback(() => {
@@ -496,132 +320,7 @@ const FlowWithControls = memo(() => {
     }
   }, [navigateBackHistory, resetToRoot, explorationHistory]);
 
-  // Recalculate node positions
-  const recalculateNodePositions = useCallback(
-    (allRootNodes: RootNodeConfig[], currentNodes: CustomNode[]) => {
-      return allRootNodes.map((rootNode, i) => {
-        const existingNode = currentNodes.find(
-          (node) => node.id === rootNode.id
-        );
 
-        return {
-          id: rootNode.id,
-          type: "concept",
-          position: calculateGridPosition(i, {
-            totalNodes: allRootNodes.length,
-            viewportWidth: viewportDimensions.width,
-            viewportHeight: viewportDimensions.height,
-          }),
-          data: {
-            label: rootNode.name,
-            color: rootNode.color,
-            path: [rootNode.name],
-            childrenLoaded: existingNode?.data?.childrenLoaded || false,
-          },
-        };
-      });
-    },
-    [viewportDimensions]
-  );
-
-  // Remove custom root node
-  const removeCustomRootNode = useCallback(
-    (nodeId: string) => {
-      if (ROOT_NODES.some((node) => node.id === nodeId)) return;
-
-      setRootNodes((prev) => prev.filter((node) => node.id !== nodeId));
-
-      setNodes((prev) => {
-        const nodesToRemove = new Set([nodeId]);
-
-        const findDescendants = (parentId: string) => {
-          prev.forEach((node) => {
-            const edge = edges.find(
-              (e) => e.source === parentId && e.target === node.id
-            );
-            if (edge) {
-              nodesToRemove.add(node.id);
-              findDescendants(node.id);
-            }
-          });
-        };
-
-        findDescendants(nodeId);
-        return prev.filter((node) => !nodesToRemove.has(node.id));
-      });
-
-      setEdges((prev) => {
-        const edgesToRemove = new Set<string>();
-
-        const findRelatedEdges = (nodeId: string) => {
-          prev.forEach((edge) => {
-            if (edge.source === nodeId || edge.target === nodeId) {
-              edgesToRemove.add(edge.id);
-              if (edge.target !== nodeId) {
-                findRelatedEdges(edge.target);
-              }
-            }
-          });
-        };
-
-        findRelatedEdges(nodeId);
-        return prev.filter((edge) => !edgesToRemove.has(edge.id));
-      });
-
-      if (selectedRootId === nodeId) {
-        setSelectedRootId(null);
-        resetHistory();
-      }
-
-      updateHistory((prev) => ({
-        states: prev.states.filter((state) => state.nodeId !== nodeId),
-        currentIndex: prev.currentIndex,
-      }));
-    },
-    [edges, selectedRootId, setNodes, setEdges, resetHistory, updateHistory]
-  );
-
-  // Add new root node
-  const addNewRootNode = useCallback(() => {
-    if (!newRootNodeName.trim()) return;
-
-    const newNodeId = `custom-${Date.now()}`;
-    const colorIndex = rootNodes.length % COLORS.length;
-    const color = COLORS[colorIndex];
-
-    const newRootNode = {
-      id: newNodeId,
-      name: newRootNodeName.trim(),
-      color,
-    };
-
-    const updatedRootNodes = [...rootNodes, newRootNode];
-    setRootNodes(updatedRootNodes);
-
-    const updatedNodes = recalculateNodePositions(updatedRootNodes, nodes);
-
-    const existingNonRootNodes = nodes.filter(
-      (node) => !rootNodes.some((rootNode) => rootNode.id === node.id)
-    );
-
-    setNodes([...updatedNodes, ...existingNonRootNodes]);
-    setNewRootNodeName("");
-
-    // Pan to show the new node
-    setTimeout(() => {
-      const newNodePosition = calculateGridPosition(
-        updatedRootNodes.length - 1
-      );
-      panToPosition(newNodePosition.x, newNodePosition.y, 1, 800);
-    }, 100);
-  }, [
-    newRootNodeName,
-    rootNodes,
-    nodes,
-    recalculateNodePositions,
-    setNodes,
-    panToPosition,
-  ]);
 
   // Filter visible nodes
   const visibleNodes = nodes.filter((node) => {

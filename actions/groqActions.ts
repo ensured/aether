@@ -302,11 +302,11 @@ export async function getChildConcepts(
     // Apply exclusions if provided
     const filteredConcepts = options.excludeConcepts
       ? concepts.filter(
-          (c) =>
-            !options.excludeConcepts!.some(
-              (ex) => ex.toLowerCase() === c.toLowerCase(),
-            ),
-        )
+        (c) =>
+          !options.excludeConcepts!.some(
+            (ex) => ex.toLowerCase() === c.toLowerCase(),
+          ),
+      )
       : concepts;
 
     // Limit to max concepts
@@ -410,7 +410,7 @@ export async function getConceptInfo(
       completion.choices[0]?.message?.content?.trim() ||
       "No information available.";
 
-    cache.set(cacheKey, info);
+    cache.setDescription(cacheKey, info);
     return info;
   } catch (error) {
     console.error("Groq API error:", error);

@@ -102,7 +102,7 @@ export const KeyboardShortcutsHelp = ({
                     Tips
                   </h3>
                   <ul className="space-y-1 text-xs text-muted-foreground">
-                    <li>• Click on nodes to generate child concepts</li>
+                    <li>• Click on nodes to generate child topics</li>
                     <li>• Camera automatically pans to new nodes</li>
                     <li>• Use mouse wheel to zoom in/out</li>
                     <li>• Drag to pan manually</li>
