@@ -47,6 +47,9 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
         <div className="flex items-center gap-4 w-full min-h-[20px]">
           <div className="flex flex-col w-full">
             <div className="h-4">
+              <span className="invisible">Last Updated: Loading...</span>
+            </div>
+            <div className="h-4 mt-1">
               <span className="invisible">
                 Next Cache Invalidation: Loading...
               </span>
@@ -68,6 +71,12 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
       <div className="flex items-center gap-4 w-full min-h-[20px]">
         <div className="flex flex-col w-full">
           <div className="h-4">
+            <span>
+              Last Updated:{" "}
+              {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+            </span>
+          </div>
+          <div className="h-4 mt-1">
             <span>Next Cache Invalidation: {formatTime(timeUntilRefresh)}</span>
           </div>
         </div>
