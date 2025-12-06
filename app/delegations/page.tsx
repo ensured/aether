@@ -118,6 +118,8 @@ async function fetchDelegationsWithToken(
   const age = res.headers.get("age") || "0";
   const date = res.headers.get("date") || new Date().toUTCString();
 
+  console.log("Cache headers:", { cacheControl, age, date });
+
   // If there's an age header, it means this came from cache
   const isCached = parseInt(age) > 0;
 
@@ -126,6 +128,8 @@ async function fetchDelegationsWithToken(
   const cacheTime = isCached
     ? responseTime - parseInt(age) * 1000
     : responseTime;
+
+  console.log("Cache calculation:", { responseTime, isCached, cacheTime });
 
   const delegations = data.map((d) => {
     const sizeTB = d.delegationSizeBytes / 1024 / 1024 / 1024 / 1024;
