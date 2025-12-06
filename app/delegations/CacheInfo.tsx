@@ -12,23 +12,20 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Validate cacheTime - if invalid, use current time
-    const validCacheTime = cacheTime && cacheTime > 0 ? cacheTime : Date.now();
     console.log(
       "CacheInfo received cacheTime:",
       cacheTime,
-      "using:",
-      validCacheTime
+      new Date(cacheTime)
     );
 
     // Initial calculation
-    const elapsed = Math.floor((Date.now() - validCacheTime) / 1000);
+    const elapsed = Math.floor((Date.now() - cacheTime) / 1000);
     const remaining = Math.max(0, revalidateSeconds - elapsed);
     setTimeUntilRefresh(remaining);
     setIsLoading(false);
 
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - validCacheTime) / 1000);
+      const elapsed = Math.floor((Date.now() - cacheTime) / 1000);
       const remaining = Math.max(0, revalidateSeconds - elapsed);
       setTimeUntilRefresh(remaining);
     }, 1000);
@@ -42,8 +39,7 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const validCacheTime = cacheTime && cacheTime > 0 ? cacheTime : Date.now();
-  const lastUpdated = new Date(validCacheTime);
+  const lastUpdated = new Date(cacheTime);
   const cacheProgress =
     ((revalidateSeconds - timeUntilRefresh) / revalidateSeconds) * 100;
 

@@ -118,7 +118,12 @@ async function fetchDelegationsWithToken(
   const age = res.headers.get("age") || "0";
   const date = res.headers.get("date") || new Date().toUTCString();
 
-  console.log("Cache headers:", { cacheControl, age, date });
+  console.log("Cache headers:", {
+    cacheControl,
+    age,
+    date,
+    allHeaders: Object.fromEntries(res.headers.entries()),
+  });
 
   // If there's an age header, it means this came from cache
   const isCached = parseInt(age) > 0;
@@ -129,7 +134,16 @@ async function fetchDelegationsWithToken(
     ? responseTime - parseInt(age) * 1000
     : responseTime;
 
-  console.log("Cache calculation:", { responseTime, isCached, cacheTime });
+  console.log("Cache calculation:", {
+    responseTime,
+    isCached,
+    cacheTime,
+    cacheTimeDate: new Date(cacheTime),
+  });
+
+  // Fallback: if cacheTime is invalid, use current time
+  const finalCacheTime = cacheTime && cacheTime > 0 ? cacheTime : Date.now();
+  console.log("Final cache time:", finalCacheTime, new Date(finalCacheTime));
 
   const delegations = data.map((d) => {
     const sizeTB = d.delegationSizeBytes / 1024 / 1024 / 1024 / 1024;
@@ -152,7 +166,7 @@ async function fetchDelegationsWithToken(
     };
   });
 
-  return { data: delegations, cacheTime };
+  return { data: delegations, cacheTime: finalCacheTime };
 }
 
 // Fetch node score with token
