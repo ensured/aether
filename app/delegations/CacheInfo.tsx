@@ -11,12 +11,21 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
   const [timeUntilRefresh, setTimeUntilRefresh] = useState(revalidateSeconds);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Validate cacheTime upfront
+  const isInvalidCacheTime = !cacheTime || cacheTime <= 0 || isNaN(cacheTime);
+
   useEffect(() => {
     console.log(
       "CacheInfo received cacheTime:",
       cacheTime,
       new Date(cacheTime)
     );
+
+    if (isInvalidCacheTime) {
+      console.warn("Invalid cacheTime provided, showing fallback");
+      setIsLoading(false);
+      return;
+    }
 
     // Initial calculation
     const elapsed = Math.floor((Date.now() - cacheTime) / 1000);
@@ -31,7 +40,7 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [cacheTime, revalidateSeconds]);
+  }, [cacheTime, revalidateSeconds, isInvalidCacheTime]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -42,6 +51,30 @@ export function CacheInfo({ cacheTime, revalidateSeconds }: CacheInfoProps) {
   const lastUpdated = new Date(cacheTime);
   const cacheProgress =
     ((revalidateSeconds - timeUntilRefresh) / revalidateSeconds) * 100;
+
+  // Show fallback for invalid cache times
+  if (isInvalidCacheTime && !isLoading) {
+    return (
+      <div
+        className="text-sm text-muted-foreground max-w-sm flex flex-col 
+    items-center justify-center w-full p-4"
+      >
+        <div className="flex items-center gap-4 w-full min-h-[20px]">
+          <div className="flex flex-col w-full">
+            <div className="h-4">
+              <span>Cache status: Unknown</span>
+            </div>
+            <div className="h-4 mt-1">
+              <span>Next refresh: {formatTime(revalidateSeconds)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+          <div className="bg-gray-400 dark:bg-gray-600 h-2 rounded-full w-1/4"></div>
+        </div>
+      </div>
+    );
+  }
 
   // Skeleton loading state
   if (isLoading) {
