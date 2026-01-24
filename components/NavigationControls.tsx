@@ -66,7 +66,7 @@ export const NavigationControls = ({
               {/* Center: Title or Navigation buttons */}
               <div className="flex items-center gap-1">
                 {!showBackButton && !showResetButton ? (
-                  <h1 className="text-lg font-bold tracking-tight">Topic Explorer</h1>
+                  <h1 className="text-lg font-bold tracking-tight">Idea Weaver</h1>
                 ) : (
                   <>
                     {showBackButton && (
@@ -127,7 +127,7 @@ export const NavigationControls = ({
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Click any topic to explore its connections
+                  Click any idea to weave connections
                 </p>
               </div>
             </CollapsibleContent>
@@ -143,7 +143,7 @@ export const NavigationControls = ({
             {/* Header row */}
             <div className="flex items-center gap-1">
               <div className="flex items-center w-full p-2 gap-2.5">
-                <h1 className="text-3xl font-bold tracking-tight">Aether</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Idea Weaver</h1>
                 <ThemeToggleSimple />
               </div>
 
@@ -197,7 +197,7 @@ export const NavigationControls = ({
             </div>
 
             <p className="text-xs text-muted-foreground flex items-center p-3">
-              Click any topic to explore its connections
+              Click any idea to weave connections
             </p>
           </div>
         </div>

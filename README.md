@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧩 Idea Weaver - Interactive Knowledge Explorer
 
-## Getting Started
+> **Weave connections between ideas through visual exploration**
 
-First, run the development server:
+[![Live Demo](https://img.shields.io/badge/Live-Demo-blue?style=for-the-badge&logo=vercel)](https://idea-weaver.vercel.app)
+[![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+
+## ✨ What is Idea Weaver?
+
+Idea Weaver is an interactive knowledge explorer that lets you weave connections between ideas through a beautiful, visual node-based interface. Click any topic like "AI," "Consciousness," or "Mathematics" to explore related concepts and see how ideas interconnect in a web of knowledge.
+
+### 🎯 Key Features
+
+- **🔍 Visual Exploration**: Navigate knowledge through an intuitive node-based graph
+- **🌐 Dynamic Connections**: Discover related topics as you explore
+- **📱 Responsive Design**: Works seamlessly on desktop, tablet, and mobile
+- **⚡ Real-time Generation**: Topics expand with AI-powered connections
+- **🎨 Beautiful UI**: Modern, clean interface with smooth animations
+- **📚 Smart Caching**: Optimized performance with intelligent caching
+
+### 🚀 Getting Started
+
+**Prerequisites:**
+- Node.js 18+ 
+- npm, yarn, pnpm, or bun
+
+**Installation:**
 
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/aether.git
+cd aether
+
+# Install dependencies
+npm install
+# or
+pnpm install
+
+# Run the development server
 npm run dev
 # or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to start weaving!
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 🎮 How to Use
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Start Weaving**: Click on any topic node to begin weaving connections
+2. **Navigate**: Use the back button to return to previous ideas
+3. **Learn More**: Click the info icon on any topic to get detailed information
+4. **Ask Questions**: Use the dialog to ask specific questions about topics
+5. **Add Custom Ideas**: Create your own topics to weave into the knowledge web
 
-## Learn More
+### 🛠️ Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Frontend**: Next.js 14, React, TypeScript
+- **UI Components**: Tailwind CSS, shadcn/ui, Framer Motion
+- **Graph Visualization**: React Flow
+- **Icons**: Lucide React
+- **State Management**: React Hooks, Context API
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 📁 Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+aether/
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   └── page.tsx           # Main application
+├── components/            # React components
+│   ├── ui/               # Reusable UI components
+│   └── ConceptNode.tsx   # Topic node component
+├── hooks/                 # Custom React hooks
+├── lib/                   # Utilities and types
+└── public/               # Static assets
+```
 
-## Deploy on Vercel
+### 🤝 Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+### 🌟 Star History
+
+If you find this project interesting, please consider giving it a star! ⭐
+
+---
+
+**Built with ❤️ using Next.js and React Flow**
+
+*Idea Weaver - Where ideas connect and knowledge grows*

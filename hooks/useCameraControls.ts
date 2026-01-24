@@ -75,7 +75,7 @@ export const useCameraControls = (isDragging = false) => {
       const parentX = parentNode.position.x;
       const parentY = parentNode.position.y;
 
-      // Calculate the full bounds of the node group with extra padding
+      // Calculate the full bounds of the node group with minimal padding
       let minX = parentX;
       let maxX = parentX;
       let minY = parentY;
@@ -85,28 +85,47 @@ export const useCameraControls = (isDragging = false) => {
         const childXPositions = childNodes.map(node => node.position.x);
         const childYPositions = childNodes.map(node => node.position.y);
 
-        minX = Math.min(parentX, ...childXPositions) - 50; // Extra left padding
-        maxX = Math.max(parentX, ...childXPositions) + responsiveConfig.nodeWidth + 50; // Extra right padding
-        minY = Math.min(parentY, ...childYPositions) - 30; // Extra top padding
-        maxY = Math.max(parentY, ...childYPositions) + responsiveConfig.nodeHeight + 30; // Extra bottom padding
+        minX = Math.min(parentX, ...childXPositions) - 20; // Reduced left padding
+        maxX = Math.max(parentX, ...childXPositions) + responsiveConfig.nodeWidth + 20; // Reduced right padding
+        minY = Math.min(parentY, ...childYPositions) - 15; // Reduced top padding
+        maxY = Math.max(parentY, ...childYPositions) + responsiveConfig.nodeHeight + 15; // Reduced bottom padding
       }
 
       // Calculate center of the full bounds
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
 
-      // Get screen width for responsive zoom
+      // Calculate optimal zoom to fit all nodes perfectly on screen
       const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
 
-      // Use responsive zoom based on screen size with more padding
-      let targetZoom = 1.2; // Reduced from 1.4 for better visibility
+      // Calculate the total width and height of all nodes including padding
+      const totalWidth = maxX - minX;
+      const totalHeight = maxY - minY;
 
+      // Calculate zoom needed to fit everything with minimal padding
+      const paddingX = screenWidth * 0.05; // 5% padding on sides
+      const paddingY = screenHeight * 0.1; // 10% padding on top/bottom
+
+      const zoomX = (screenWidth - paddingX * 2) / totalWidth;
+      const zoomY = (screenHeight - paddingY * 2) / totalHeight;
+
+      // Use the smaller zoom to ensure everything fits
+      let targetZoom = Math.min(zoomX, zoomY, 1.5); // Cap at 1.5x for desktop
+
+      // Apply responsive adjustments
       if (screenWidth < 640) {
-        // Mobile - zoom out to fit wider grid with more padding
-        targetZoom = 0.5; // Reduced from 0.6
+        // Mobile - ensure minimum readable zoom
+        targetZoom = Math.max(targetZoom, 0.65); // Minimum zoom for readability
+        targetZoom = Math.min(targetZoom, 0.85); // Maximum zoom for mobile
       } else if (screenWidth < 1024) {
-        // Tablet - moderate zoom with better centering
-        targetZoom = 0.8; // Reduced from 0.9
+        // Tablet - moderate zoom range
+        targetZoom = Math.max(targetZoom, 0.75);
+        targetZoom = Math.min(targetZoom, 1.2);
+      } else {
+        // Desktop - normal zoom range
+        targetZoom = Math.max(targetZoom, 0.9);
+        targetZoom = Math.min(targetZoom, 1.5);
       }
 
       // Smoothly animate to the new position and zoom

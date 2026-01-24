@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Topic Explorer",
-  description: "Explore topics and their relationships",
+  title: "Idea Weaver",
+  description: "Weave connections between ideas through visual exploration",
 };
 
 export default function RootLayout({

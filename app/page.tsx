@@ -471,12 +471,6 @@ const FlowWithControls = memo(() => {
             color="var(--muted-foreground)"
             className="opacity-30"
           />
-          {/* <MiniMap
-            nodeColor="var(--muted-foreground)"
-            zoomable
-            pannable
-            className="border rounded-md"
-          /> */}
           <Controls className="bg-background/80 backdrop-blur border" />
         </ReactFlow>
       </NodeContext.Provider>
