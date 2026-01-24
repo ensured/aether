@@ -317,8 +317,36 @@ const FlowWithControls = memo(() => {
       const previousState =
         explorationHistory.states[explorationHistory.currentIndex - 1];
       setSelectedRootId(previousState.selectedRootId);
+
+      // Clean up nodes and edges that were explored after the current point
+      const validHistoryNodeIds = new Set(
+        explorationHistory.states
+          .slice(0, explorationHistory.currentIndex)
+          .map(state => state.nodeId)
+      );
+
+      const rootNodeIds = new Set([...ROOT_NODES, ...loadCustomNodes()].map(node => node.id));
+
+      setNodes(prevNodes => prevNodes.filter(node =>
+        rootNodeIds.has(node.id) || validHistoryNodeIds.has(node.id)
+      ));
+
+      // Clean up edges that connect to removed nodes
+      const validNodeIds = new Set([
+        ...rootNodeIds,
+        ...validHistoryNodeIds
+      ]);
+
+      setEdges(prevEdges => prevEdges.filter(edge =>
+        validNodeIds.has(edge.source) && validNodeIds.has(edge.target)
+      ));
+    } else {
+      // If we're going back to the root, clear any nodes that aren't root nodes
+      const rootNodeIds = new Set([...ROOT_NODES, ...loadCustomNodes()].map(node => node.id));
+      setNodes(prevNodes => prevNodes.filter(node => rootNodeIds.has(node.id)));
+      setEdges([]);
     }
-  }, [navigateBackHistory, resetToRoot, explorationHistory]);
+  }, [navigateBackHistory, resetToRoot, explorationHistory, setNodes, setEdges]);
 
 
 
@@ -326,10 +354,17 @@ const FlowWithControls = memo(() => {
   const visibleNodes = nodes.filter((node) => {
     if (!selectedRootId) return true;
     if (node.id === selectedRootId) return true;
-    if (explorationHistory.states.some((state) => state.nodeId === node.id))
-      return true;
 
+    // Only show nodes from current history point and earlier, not all explored topics
     if (explorationHistory.currentIndex >= 0) {
+      // Check if this node is in the current or previous history states
+      const isInHistory = explorationHistory.states
+        .slice(0, explorationHistory.currentIndex + 1)
+        .some((state) => state.nodeId === node.id);
+
+      if (isInHistory) return true;
+
+      // Show children of the current state
       const mostRecentState =
         explorationHistory.states[explorationHistory.currentIndex];
       if (mostRecentState) {
@@ -343,6 +378,12 @@ const FlowWithControls = memo(() => {
 
     return false;
   });
+
+  // Filter edges to only show connections between visible nodes
+  const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
+  const visibleEdges = edges.filter(edge =>
+    visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+  );
 
   // Context value (memoized to prevent unnecessary re-renders)
   const nodeContextValue = useMemo(
@@ -395,7 +436,7 @@ const FlowWithControls = memo(() => {
       <NodeContext.Provider value={nodeContextValue}>
         <ReactFlow
           nodes={visibleNodes}
-          edges={edges}
+          edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}

@@ -154,13 +154,11 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
 
   return (
     <motion.div
-      className={`relative ${
-        data.color || "bg-slate-600"
-      } ${textColor} rounded-lg shadow-lg py-2 px-3 cursor-pointer ${
-        isLoading
+      className={`relative ${data.color || "bg-slate-600"
+        } ${textColor} rounded-lg shadow-lg py-2 px-3 cursor-pointer ${isLoading
           ? "ring-2 ring-white/50 ring-offset-2 ring-offset-transparent"
           : ""
-      }`}
+        }`}
       style={{
         width: GRID_CONFIG.nodeWidth,
         minHeight: GRID_CONFIG.nodeHeight,
@@ -209,9 +207,8 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                 }}
               >
                 <Loader2
-                  className={`w-4 h-4 shrink-0 drop-shadow-md ${
-                    textColor === "text-white" ? "text-white" : "text-gray-900"
-                  }`}
+                  className={`w-4 h-4 shrink-0 drop-shadow-md ${textColor === "text-white" ? "text-white" : "text-gray-900"
+                    }`}
                 />
               </motion.div>
             )}
@@ -237,11 +234,10 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className={`h-6 w-6 transition-colors ${
-                    textColor === "text-white"
-                      ? "hover:bg-white/20 hover:text-white"
-                      : "hover:bg-gray-900/20 hover:text-gray-900"
-                  }`}
+                  className={`h-6 w-6 transition-colors ${textColor === "text-white"
+                    ? "hover:bg-white/20 hover:text-white"
+                    : "hover:bg-gray-900/20 hover:text-gray-900"
+                    }`}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
                     onOpenDialog(node);
@@ -350,11 +346,10 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
               <Button
                 size="icon"
                 variant="ghost"
-                className={`h-6 w-6 transition-colors ${
-                  textColor === "text-white"
-                    ? "hover:bg-white/20 text-white"
-                    : "hover:bg-gray-900/20 text-gray-900"
-                }`}
+                className={`h-6 w-6 transition-colors ${textColor === "text-white"
+                  ? "hover:bg-white/20 text-white"
+                  : "hover:bg-gray-900/20 text-gray-900"
+                  }`}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   onRemoveNode(id);
@@ -368,21 +363,24 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
       </div>
 
       {/* Cache duration indicator at bottom right */}
-      {(cacheStatus?.isCached || cacheMinutesLeft !== null || true) && (
+      {(cacheStatus?.isCached || cacheMinutesLeft !== null) && (
         <motion.div
-          className={`absolute bottom-2 right-2 text-[10px] ${
-            textColor === "text-white" ? "opacity-70" : "opacity-60"
-          }`}
+          className={`absolute bottom-2 right-2 text-[10px] ${textColor === "text-white" ? "opacity-70" : "opacity-60"
+            }`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
           <span>
             {cacheMinutesLeft !== null
-              ? `cached for ${cacheMinutesLeft} min`
+              ? cacheMinutesLeft >= 60
+                ? `cached for ~${Math.round(cacheMinutesLeft / 60)} hours`
+                : `cached for ${cacheMinutesLeft} min`
               : cacheStatus?.isCached
-              ? `cached for ${cacheStatus.expiresInMinutes} min`
-              : "No cache"}
+                ? cacheStatus.expiresInMinutes && cacheStatus.expiresInMinutes >= 60
+                  ? `cached for ~${Math.round(cacheStatus.expiresInMinutes / 60)} hours`
+                  : `cached for ${cacheStatus.expiresInMinutes} min`
+                : "No cache"}
           </span>
         </motion.div>
       )}

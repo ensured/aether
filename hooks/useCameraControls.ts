@@ -75,45 +75,39 @@ export const useCameraControls = (isDragging = false) => {
       const parentX = parentNode.position.x;
       const parentY = parentNode.position.y;
 
-      // Calculate a simple center point based on child positions
-      let avgChildX = parentX;
-      let avgChildY = parentY + responsiveConfig.childOffsetY + 100;
+      // Calculate the full bounds of the node group with extra padding
+      let minX = parentX;
+      let maxX = parentX;
+      let minY = parentY;
+      let maxY = parentY + responsiveConfig.childOffsetY + 100;
 
       if (childNodes.length > 0) {
-        avgChildX =
-          childNodes.reduce((sum, node) => sum + node.position.x, 0) /
-          childNodes.length;
-        avgChildY =
-          childNodes.reduce((sum, node) => sum + node.position.y, 0) /
-          childNodes.length;
+        const childXPositions = childNodes.map(node => node.position.x);
+        const childYPositions = childNodes.map(node => node.position.y);
+
+        minX = Math.min(parentX, ...childXPositions) - 50; // Extra left padding
+        maxX = Math.max(parentX, ...childXPositions) + responsiveConfig.nodeWidth + 50; // Extra right padding
+        minY = Math.min(parentY, ...childYPositions) - 30; // Extra top padding
+        maxY = Math.max(parentY, ...childYPositions) + responsiveConfig.nodeHeight + 30; // Extra bottom padding
       }
 
-      // For mobile, adjust centering to account for wider grid spread
+      // Calculate center of the full bounds
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      // Get screen width for responsive zoom
       const screenWidth = window.innerWidth;
-      let centerX = (parentX + avgChildX) / 2;
-      const centerY = (parentY + avgChildY) / 2;
+
+      // Use responsive zoom based on screen size with more padding
+      let targetZoom = 1.2; // Reduced from 1.4 for better visibility
 
       if (screenWidth < 640) {
-        // Mobile - shift center to the right to compensate for wider grid
-        const gridWidth = responsiveConfig.childNodesPerRow * (responsiveConfig.nodeWidth + responsiveConfig.childSpacing);
-        centerX += gridWidth * 0.15; // Shift right by 15% of grid width
+        // Mobile - zoom out to fit wider grid with more padding
+        targetZoom = 0.5; // Reduced from 0.6
       } else if (screenWidth < 1024) {
-        // Tablet - smaller adjustment for 3-column grid
-        const gridWidth = responsiveConfig.childNodesPerRow * (responsiveConfig.nodeWidth + responsiveConfig.childSpacing);
-        centerX += gridWidth * 0.08; // Shift right by 8% of grid width
+        // Tablet - moderate zoom with better centering
+        targetZoom = 0.8; // Reduced from 0.9
       }
-
-      // Use responsive zoom based on screen size
-      let targetZoom = 1.4;
-
-      if (screenWidth < 640) {
-        // Mobile - zoom out even more to fit wider grid
-        targetZoom = 0.6;
-      } else if (screenWidth < 1024) {
-        // Tablet - use a more conservative zoom for consistency
-        targetZoom = 0.9;
-      }
-      // Desktop - keep original zoom
 
       // Smoothly animate to the new position and zoom
       setCenter(centerX, centerY, { zoom: targetZoom, duration });
@@ -182,13 +176,13 @@ export const useCameraControls = (isDragging = false) => {
       const boundingWidth = maxX - minX;
       const boundingHeight = maxY - minY;
 
-      const containerWidth = window.innerWidth - 200;
-      const containerHeight = window.innerHeight - 200;
+      const containerWidth = window.innerWidth - 100; // Reduced padding for better fit
+      const containerHeight = window.innerHeight - 100; // Reduced padding for better fit
 
       const zoomX = containerWidth / boundingWidth;
       const zoomY = containerHeight / boundingHeight;
       const targetZoom = Math.min(zoomX, zoomY, 2.0);
-      const finalZoom = Math.max(targetZoom, 0.2);
+      const finalZoom = Math.max(targetZoom, 0.3); // Increased minimum zoom for better visibility
 
       setCenter(centerX, centerY, { zoom: finalZoom, duration });
 
