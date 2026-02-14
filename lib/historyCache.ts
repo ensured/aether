@@ -22,7 +22,7 @@ class HistoryCache {
 
   get(sessionId: string): HistoryEntry | null {
     const entry = this.cache.get(sessionId);
-    
+
     if (!entry) {
       return null;
     }
@@ -54,13 +54,13 @@ class HistoryCache {
   has(sessionId: string): boolean {
     const entry = this.cache.get(sessionId);
     if (!entry) return false;
-    
+
     // Check if expired
     if (Date.now() > entry.expiry) {
       this.cache.delete(sessionId);
       return false;
     }
-    
+
     return true;
   }
 
@@ -73,7 +73,7 @@ class HistoryCache {
   getActiveSessions(): string[] {
     const now = Date.now();
     const activeSessions: string[] = [];
-    
+
     for (const [sessionId, entry] of this.cache.entries()) {
       if (now <= entry.expiry) {
         activeSessions.push(sessionId);
@@ -81,7 +81,7 @@ class HistoryCache {
         this.cache.delete(sessionId);
       }
     }
-    
+
     return activeSessions;
   }
 }

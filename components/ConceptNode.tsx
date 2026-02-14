@@ -229,7 +229,11 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <Dialog>
+            <Dialog onOpenChange={(open) => {
+              if (open) {
+                onOpenDialog(node);
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button
                   size="icon"
@@ -240,7 +244,6 @@ export const ConceptNode = ({ id, data }: NodeProps<CustomNode>) => {
                     }`}
                   onClick={(e: React.MouseEvent) => {
                     e.stopPropagation();
-                    onOpenDialog(node);
                   }}
                 >
                   <Info className="w-4 h-4" />
