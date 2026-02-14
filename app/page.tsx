@@ -318,7 +318,7 @@ const FlowWithControls = memo(() => {
         explorationHistory.states[explorationHistory.currentIndex - 1];
       setSelectedRootId(previousState.selectedRootId);
 
-      // Clean up nodes and edges that were explored after the current point
+      // Get all valid history node IDs (the breadcrumb trail)
       const validHistoryNodeIds = new Set(
         explorationHistory.states
           .slice(0, explorationHistory.currentIndex)
@@ -327,26 +327,40 @@ const FlowWithControls = memo(() => {
 
       const rootNodeIds = new Set([...ROOT_NODES, ...loadCustomNodes()].map(node => node.id));
 
-      setNodes(prevNodes => prevNodes.filter(node =>
-        rootNodeIds.has(node.id) || validHistoryNodeIds.has(node.id)
-      ));
+      // Keep: root nodes, history nodes, AND children of history nodes
+      setNodes(prevNodes => prevNodes.filter(node => {
+        // Keep root nodes
+        if (rootNodeIds.has(node.id)) return true;
 
-      // Clean up edges that connect to removed nodes
-      const validNodeIds = new Set([
+        // Keep history nodes (the breadcrumb trail)
+        if (validHistoryNodeIds.has(node.id)) return true;
+
+        // Keep children of any history node
+        const isChildOfHistoryNode = Array.from(validHistoryNodeIds).some(historyNodeId =>
+          edges.some(edge => edge.source === historyNodeId && edge.target === node.id)
+        );
+
+        return isChildOfHistoryNode;
+      }));
+
+      // Clean up edges to only connect to remaining nodes
+      const remainingNodeIds = new Set([
         ...rootNodeIds,
-        ...validHistoryNodeIds
+        ...validHistoryNodeIds,
+        // Add children of history nodes
+        ...Array.from(validHistoryNodeIds).flatMap(historyNodeId =>
+          edges
+            .filter(edge => edge.source === historyNodeId)
+            .map(edge => edge.target)
+        )
       ]);
 
       setEdges(prevEdges => prevEdges.filter(edge =>
-        validNodeIds.has(edge.source) && validNodeIds.has(edge.target)
+        remainingNodeIds.has(edge.source) && remainingNodeIds.has(edge.target)
       ));
-    } else {
-      // If we're going back to the root, clear any nodes that aren't root nodes
-      const rootNodeIds = new Set([...ROOT_NODES, ...loadCustomNodes()].map(node => node.id));
-      setNodes(prevNodes => prevNodes.filter(node => rootNodeIds.has(node.id)));
-      setEdges([]);
     }
-  }, [navigateBackHistory, resetToRoot, explorationHistory, setNodes, setEdges]);
+    // Remove the else block - resetToRoot() already handles resetting to all root nodes
+  }, [navigateBackHistory, resetToRoot, explorationHistory, setNodes, setEdges, edges]);
 
 
 
@@ -364,15 +378,13 @@ const FlowWithControls = memo(() => {
 
       if (isInHistory) return true;
 
-      // Show children of the current state
-      const mostRecentState =
-        explorationHistory.states[explorationHistory.currentIndex];
-      if (mostRecentState) {
-        const isChild = edges.some(
-          (edge) =>
-            edge.source === mostRecentState.nodeId && edge.target === node.id
+      // Only show children of the current/leaf node, not all ancestors to reduce clutter
+      const currentState = explorationHistory.states[explorationHistory.currentIndex];
+      if (currentState) {
+        const isChildOfCurrent = edges.some(
+          (edge) => edge.source === currentState.nodeId && edge.target === node.id
         );
-        if (isChild) return true;
+        if (isChildOfCurrent) return true;
       }
     }
 
